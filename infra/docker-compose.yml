@@ -1,0 +1,64 @@
+name: autotea-v2
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-autotea}
+      POSTGRES_USER: ${DB_USERNAME:-autotea}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-autotea}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-autotea}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  python-engine:
+    build:
+      context: ../python-engine
+    restart: unless-stopped
+    environment:
+      RUNS_DIR: /data/runs
+      CALC_TIMEOUT_SECONDS: ${CALC_TIMEOUT_SECONDS:-300}
+    volumes:
+      - run-data:/data/runs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-autotea}
+      DB_USERNAME: ${DB_USERNAME:-autotea}
+      DB_PASSWORD: ${DB_PASSWORD:-autotea}
+      RUN_DIR: /data/runs
+      PYTHON_ENGINE_URL: http://python-engine:8000
+      PYTHON_ENGINE_TIMEOUT: ${CALC_TIMEOUT_SECONDS:-300}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID must be set}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+    volumes:
+      - run-data:/data/runs
+    ports:
+      - "${BACKEND_PORT:-8081}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      python-engine:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  run-data:

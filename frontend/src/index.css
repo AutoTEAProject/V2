@@ -1,0 +1,434 @@
+:root {
+  --text: #3f3f46;
+  --text-h: #111114;
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --border: #e2e2e6;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --danger: #dc2626;
+  --success: #15803d;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+h1 {
+  font-size: 24px;
+  margin: 0 0 4px;
+  color: var(--text-h);
+}
+
+h2 {
+  font-size: 16px;
+  margin: 0 0 12px;
+  color: var(--text-h);
+}
+
+h3 {
+  font-size: 15px;
+  margin: 0 0 12px;
+  color: var(--text-h);
+}
+
+.muted {
+  color: #71717a;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.success-text {
+  color: var(--success);
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+/* layout */
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.app-title {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--accent);
+}
+
+.app-nav {
+  display: flex;
+  gap: 16px;
+}
+
+.app-nav a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 6px 0;
+  border-bottom: 2px solid transparent;
+}
+
+.app-nav a.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.user-name {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.app-main {
+  flex: 1;
+  padding: 24px;
+}
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* login */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  min-width: 320px;
+}
+
+.login-card h1 {
+  color: var(--accent);
+  font-size: 28px;
+}
+
+.login-card p {
+  margin: 8px 0 24px;
+  color: var(--text);
+}
+
+.google-button-slot {
+  display: flex;
+  justify-content: center;
+}
+
+/* cards & forms */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.form-row label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.form-row input,
+.form-row textarea,
+.form-row select {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.k-values {
+  flex-direction: row;
+  gap: 16px;
+}
+
+.k-values label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.k-values input {
+  width: 100px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--bg);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+/* project list */
+
+.project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.project-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.project-list-item a {
+  color: var(--text-h);
+  text-decoration: none;
+}
+
+.project-desc {
+  color: var(--text);
+  font-weight: 400;
+}
+
+.project-date {
+  color: #a1a1aa;
+  font-size: 13px;
+}
+
+/* tabs */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.tab {
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--text);
+}
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* tables */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.run-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #e4e4e7;
+}
+
+.status-success {
+  background: #dcfce7;
+  color: var(--success);
+}
+
+.status-failed {
+  background: #fee2e2;
+  color: var(--danger);
+}
+
+.status-running,
+.status-parsing {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-parsed {
+  background: #e0e7ff;
+  color: var(--accent);
+}
+
+/* equipment settings */
+
+.setting-editor {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+.checkbox-line,
+.radio-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  margin: 6px 0;
+}
+
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #71717a;
+  margin: 12px 0 4px;
+}
+
+.formula-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.utility-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.instance-list {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.instance-list summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.instance-row {
+  border-top: 1px dashed var(--border);
+  padding: 10px 0;
+}
+
+.instance-row-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

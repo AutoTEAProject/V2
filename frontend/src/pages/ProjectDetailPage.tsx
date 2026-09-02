@@ -1,0 +1,49 @@
+import { useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../api/client'
+import { RunTab } from './RunTab'
+import { EquipmentSettingsTab } from './EquipmentSettingsTab'
+
+type Tab = 'run' | 'settings'
+
+export function ProjectDetailPage() {
+  const { caseId } = useParams<{ caseId: string }>()
+  const id = Number(caseId)
+  const [tab, setTab] = useState<Tab>('run')
+
+  const { data: teaCase } = useQuery({
+    queryKey: ['case', id],
+    queryFn: () => api.getCase(id),
+    enabled: Number.isFinite(id),
+  })
+
+  if (!Number.isFinite(id)) return <p className="error-text">잘못된 프로젝트입니다.</p>
+
+  return (
+    <div className="page">
+      <h1>{teaCase?.name ?? `프로젝트 #${id}`}</h1>
+      {teaCase?.description && <p className="muted">{teaCase.description}</p>}
+
+      <div className="tabs">
+        <button
+          type="button"
+          className={tab === 'run' ? 'tab active' : 'tab'}
+          onClick={() => setTab('run')}
+        >
+          실행
+        </button>
+        <button
+          type="button"
+          className={tab === 'settings' ? 'tab active' : 'tab'}
+          onClick={() => setTab('settings')}
+        >
+          장치비 · Utility 설정
+        </button>
+      </div>
+
+      {tab === 'run' && <RunTab caseId={id} />}
+      {tab === 'settings' && <EquipmentSettingsTab caseId={id} />}
+    </div>
+  )
+}
