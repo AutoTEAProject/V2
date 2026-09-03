@@ -9,6 +9,7 @@ import com.autotea.backend.dto.EquipmentInstanceResponse;
 import com.autotea.backend.exception.ResourceNotFoundException;
 import com.autotea.backend.repository.CalculationRunRepository;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +19,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * runId 기준으로 {app.storage.run-dir}/{runId}/input/ 아래 input.xlsx, input.rep를
@@ -38,11 +41,12 @@ public class RunService {
     private final PythonEngineClient pythonEngineClient;
     private final ObjectMapper objectMapper;
 
-    public CalculationRun submitDraft(Long caseId, MultipartFile xlsxFile, MultipartFile repFile) {
+    public CalculationRun submitDraft(Long caseId, String name, MultipartFile xlsxFile, MultipartFile repFile) {
         TeaCase teaCase = caseService.getOrThrow(caseId);
 
+        String resolvedName = (name == null || name.isBlank()) ? xlsxFile.getOriginalFilename() : name.trim();
         CalculationRun run = calculationRunRepository.save(
-                new CalculationRun(teaCase, xlsxFile.getOriginalFilename(), repFile.getOriginalFilename()));
+                new CalculationRun(teaCase, resolvedName, xlsxFile.getOriginalFilename(), repFile.getOriginalFilename()));
 
         Path inputDir = runDir(run.getId()).resolve("input");
         try {
@@ -110,6 +114,7 @@ public class RunService {
             if (response.isSuccess()) {
                 run.setStatus(RunStatus.SUCCESS);
                 run.setResultPath(runDir.resolve("output.xlsx").toString());
+                run.setErrorMessage(null);
             } else {
                 run.setStatus(RunStatus.FAILED);
                 run.setErrorMessage(response.errorMessage());
@@ -137,6 +142,40 @@ public class RunService {
             throw new ResourceNotFoundException("결과 파일이 없습니다. run=" + run.getId());
         }
         return Path.of(run.getResultPath());
+    }
+
+    /**
+     * 장치 이름 -> (수식 이름 -> 실제 계산된 EQUIPMENT COST[USD])를 돌려준다.
+     * 장치비 설정 화면에서 "이 수식을 쓰면 이 장치는 실제로 얼마가 나온다"를 보여주기 위한 용도.
+     */
+    public Map<String, Map<String, Double>> equipmentCosts(CalculationRun run) {
+        if (run.getStatus() != RunStatus.SUCCESS) {
+            throw new ResourceNotFoundException("계산이 완료된 run이 아닙니다. run=" + run.getId());
+        }
+        Path file = runDir(run.getId()).resolve("cost_result.json");
+        if (!Files.exists(file)) {
+            throw new ResourceNotFoundException("장치비 계산 결과 파일이 없습니다. run=" + run.getId());
+        }
+        Map<String, Map<String, Map<String, Object>>> raw;
+        try {
+            raw = objectMapper.readValue(file.toFile(),
+                    new TypeReference<Map<String, Map<String, Map<String, Object>>>>() {
+                    });
+        } catch (JacksonException e) {
+            throw new IllegalStateException("장치비 계산 결과 파일 읽기 실패: " + e.getMessage(), e);
+        }
+
+        Map<String, Map<String, Double>> result = new LinkedHashMap<>();
+        raw.forEach((equipmentName, byFormula) -> {
+            Map<String, Double> costs = new LinkedHashMap<>();
+            byFormula.forEach((formulaName, fields) -> {
+                if (fields.get("EQUIPMENT COST") instanceof Number number) {
+                    costs.put(formulaName, number.doubleValue());
+                }
+            });
+            result.put(equipmentName, costs);
+        });
+        return result;
     }
 
     private Path runDir(Long runId) {

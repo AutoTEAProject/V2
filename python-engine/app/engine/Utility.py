@@ -142,24 +142,33 @@ def calEquipmentCost(inputData, cost, utility, exceptCapacity): #react도 추가
 		- HEX, HTX : EQUIPMENT COST * (B1 + B2*FM)
 		'''
 
+		# utility 사용량이 아예 파싱되지 않은 장치(.rep에 해당 유틸리티 섹션이 없는 경우)도 있을 수 있어서
+		# utility[key]를 바로 인덱싱하지 않고 매 반복마다 새로 조회한다(예전 값이 다음 장치로 새는 버그도 같이 방지).
+		utilityKey = None
+		equipmentUtility = utility.get(key, {})
+
 		if (type == "HTX"):
-			if ("HOT UTILITY[kW]" in utility[key]):
+			if ("HOT UTILITY[kW]" in equipmentUtility):
 				utilityKey = "HOT UTILITY[kW]"
-			elif ("ELECTRICITY UTILITY[kW]" in utility[key]):
+			elif ("ELECTRICITY UTILITY[kW]" in equipmentUtility):
 				utilityKey = "ELECTRICITY UTILITY[kW]"
-			else:
+			elif ("COOLING UTILITY[kg/hr]" in equipmentUtility):
 				utilityKey = "COOLING UTILITY[kg/hr]"
-			capacity = utility[key][utilityKey]
+			if utilityKey:
+				capacity = equipmentUtility[utilityKey]
 		elif (type == "HEX"):
 			capacity = inputData[key]["HeatTransferArea"]
 		elif (type == "COMP"):
 			capacity = inputData[key]["DriverPower"]
 		if (type == "HTX" or checkType(key) == "HTX"):
-			capacity = utility[key][utilityKey] / HTX_CAPACITY_PARAM
-			for formulaName in selectedFormulaNames(key, HeaterParam):
-				params = HeaterParam[formulaName]
-				temp[formulaName] = deepcopy(params)
-				temp[formulaName]["EQUIPMENT COST"] = ((10**(params["K1"]+params["K2"]+params["K3"]))*(capacity / 10)**(0.6)) * (798.8 / 397)
+			if utilityKey is None:
+				print(key, ": HTX 장치인데 utility 사용량(HOT/ELECTRICITY/COOLING)이 파싱되지 않아 장치비를 계산할 수 없습니다.")
+			else:
+				capacity = equipmentUtility[utilityKey] / HTX_CAPACITY_PARAM
+				for formulaName in selectedFormulaNames(key, HeaterParam):
+					params = HeaterParam[formulaName]
+					temp[formulaName] = deepcopy(params)
+					temp[formulaName]["EQUIPMENT COST"] = ((10**(params["K1"]+params["K2"]+params["K3"]))*(capacity / 10)**(0.6)) * (798.8 / 397)
 		elif (type == "HEX"):
 			for formulaName in selectedFormulaNames(key, HeatExchangerParam):
 				params = HeatExchangerParam[formulaName]

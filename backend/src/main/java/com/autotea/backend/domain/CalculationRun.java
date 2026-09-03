@@ -33,6 +33,10 @@ public class CalculationRun {
     @JoinColumn(name = "case_id", nullable = false)
     private TeaCase teaCase;
 
+    /** 업로드된 파일(input.xlsx/input.rep) 묶음의 이름. 같은 파일로 설정만 바꿔 재실행할 때는 바뀌지 않는다. */
+    @Column(length = 200)
+    private String name;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private RunStatus status = RunStatus.DRAFT;
@@ -62,8 +66,9 @@ public class CalculationRun {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
-    public CalculationRun(TeaCase teaCase, String inputXlsxName, String inputRepName) {
+    public CalculationRun(TeaCase teaCase, String name, String inputXlsxName, String inputRepName) {
         this.teaCase = teaCase;
+        this.name = name;
         this.inputXlsxName = inputXlsxName;
         this.inputRepName = inputRepName;
     }

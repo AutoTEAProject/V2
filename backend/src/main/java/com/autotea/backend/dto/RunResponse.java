@@ -8,6 +8,7 @@ import java.time.Instant;
 public record RunResponse(
         Long id,
         Long caseId,
+        String name,
         RunStatus status,
         String inputXlsxName,
         String inputRepName,
@@ -22,6 +23,7 @@ public record RunResponse(
         return new RunResponse(
                 run.getId(),
                 run.getTeaCase().getId(),
+                run.getName(),
                 run.getStatus(),
                 run.getInputXlsxName(),
                 run.getInputRepName(),

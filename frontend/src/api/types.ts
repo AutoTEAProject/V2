@@ -39,6 +39,7 @@ export type RunStatus = 'DRAFT' | 'PARSING' | 'PARSED' | 'RUNNING' | 'SUCCESS' |
 export interface CalculationRun {
   id: number
   caseId: number
+  name: string | null
   status: RunStatus
   inputXlsxName: string | null
   inputRepName: string | null
@@ -82,6 +83,14 @@ export interface EquipmentSettingItem {
   selectedFormulaTemplateIds: number[]
   utilityTypes: UtilityType[]
 }
+
+export interface UtilityPrice {
+  value: number
+  unit: string | null
+}
+
+/** 장치 이름 -> (수식 이름 -> 실제 계산된 EQUIPMENT COST[USD]) */
+export type EquipmentCosts = Record<string, Record<string, number>>
 
 export function parseEquipmentSnapshot(run: CalculationRun): EquipmentInstance[] {
   if (!run.equipmentSnapshot) return []

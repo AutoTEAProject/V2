@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from app.runner import CalculationError, execute, parse_equipment
 from app.schemas import CalculateRequest, CalculateResponse, EquipmentInfo, ParseResponse
+from app.utility_prices import read_utility_prices
 
 RUNS_DIR = Path(os.environ.get("RUNS_DIR", "/data/runs"))
 CALC_TIMEOUT_SECONDS = int(os.environ.get("CALC_TIMEOUT_SECONDS", "300"))
@@ -33,3 +34,8 @@ def parse(request: CalculateRequest) -> ParseResponse:
         return ParseResponse(status="SUCCESS", equipment=[EquipmentInfo(**e) for e in equipment], logs=logs)
     except CalculationError as e:
         return ParseResponse(status="FAILED", errorMessage=str(e), logs=e.logs)
+
+
+@app.get("/config/utility-prices")
+def utility_prices() -> dict:
+    return read_utility_prices()

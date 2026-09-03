@@ -9,15 +9,17 @@ export function LoginPage() {
   const { loginWithGoogleIdToken } = useAuth()
   const navigate = useNavigate()
   const buttonRef = useRef<HTMLDivElement>(null)
+  const initializedRef = useRef(false)
   const [loginError, setLoginError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!clientId) return
+    if (!clientId || initializedRef.current) return
 
     let cancelled = false
 
     const setup = () => {
-      if (cancelled || !window.google || !buttonRef.current) return
+      if (cancelled || !window.google || !buttonRef.current || initializedRef.current) return
+      initializedRef.current = true
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: (response) => {

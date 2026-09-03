@@ -432,3 +432,62 @@ td {
   align-items: center;
   gap: 10px;
 }
+
+.formula-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.formula-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+.formula-edit-form input {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.formula-edit-form input:first-child {
+  flex: 1;
+  min-width: 120px;
+}
+
+.formula-edit-form input:not(:first-child) {
+  width: 70px;
+}
+
+.formula-create {
+  margin-top: 8px;
+}
+
+.cost-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.run-log {
+  margin: 0;
+  padding: 12px;
+  background: #18181b;
+  color: #e4e4e7;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow-y: auto;
+}

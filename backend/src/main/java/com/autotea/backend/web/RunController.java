@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -28,10 +29,11 @@ public class RunController {
     @PostMapping(value = "/api/cases/{caseId}/runs/draft", consumes = "multipart/form-data")
     public RunResponse submitDraft(
             @PathVariable Long caseId,
+            @RequestParam(value = "name", required = false) String name,
             @RequestParam("xlsxFile") MultipartFile xlsxFile,
             @RequestParam("repFile") MultipartFile repFile
     ) {
-        CalculationRun run = runService.submitDraft(caseId, xlsxFile, repFile);
+        CalculationRun run = runService.submitDraft(caseId, name, xlsxFile, repFile);
         return RunResponse.from(run);
     }
 
@@ -50,6 +52,13 @@ public class RunController {
     @GetMapping("/api/runs/{id}")
     public RunResponse findOne(@PathVariable Long id) {
         return RunResponse.from(runService.getOrThrow(id));
+    }
+
+    /** 장치 이름 -> (수식 이름 -> 실제 계산된 EQUIPMENT COST[USD]). SUCCESS run에서만 가능. */
+    @GetMapping("/api/runs/{id}/equipment-costs")
+    public Map<String, Map<String, Double>> equipmentCosts(@PathVariable Long id) {
+        CalculationRun run = runService.getOrThrow(id);
+        return runService.equipmentCosts(run);
     }
 
     @GetMapping("/api/runs/{id}/result")

@@ -54,9 +54,17 @@ def parseFlowName(flowData):
 			cost = float(df.iat[i, 2])
 			if (pd.isna(cost)):
 				raise TypeError("input flow의 가격을 입력해 주세요. : " + inputFlowName)
-			inputFlow[inputFlowName] = {"amount" : parseFlowData(repfilename, inputFlowName), "cost" : cost} # 단위 KG/HR
+			amount = parseFlowData(repfilename, inputFlowName) # 단위 KG/HR
+			if amount is None:
+				print(inputFlowName, ": 이 프로젝트의 input.rep에서 해당 stream을 찾을 수 없어 원료비 계산에서 제외합니다.")
+				amount = 0.0
+			inputFlow[inputFlowName] = {"amount" : amount, "cost" : cost}
 		if (pd.isna(outputFlowName) == False):
-			outputFlow[outputFlowName] = parseFlowData(repfilename, outputFlowName) # 단위 KG/HR
+			amount = parseFlowData(repfilename, outputFlowName) # 단위 KG/HR
+			if amount is None:
+				print(outputFlowName, ": 이 프로젝트의 input.rep에서 해당 stream을 찾을 수 없어 생산량 계산에서 제외합니다.")
+				amount = 0.0
+			outputFlow[outputFlowName] = amount
 	flowData["inputFlow"] = inputFlow
 	flowData["outputFlow"] = outputFlow
 	

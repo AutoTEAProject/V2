@@ -1,11 +1,13 @@
 import type {
   AuthResponse,
   CalculationRun,
+  EquipmentCosts,
   EquipmentSetting,
   EquipmentSettingItem,
   EquipmentType,
   FormulaTemplate,
   TeaCase,
+  UtilityPrice,
 } from './types'
 
 const TOKEN_KEY = 'autotea_token'
@@ -89,8 +91,9 @@ export const api = {
 
   listRuns: (caseId: number) => request<CalculationRun[]>(`/api/cases/${caseId}/runs`),
   getRun: (id: number) => request<CalculationRun>(`/api/runs/${id}`),
-  submitDraft: (caseId: number, xlsxFile: File, repFile: File) => {
+  submitDraft: (caseId: number, name: string, xlsxFile: File, repFile: File) => {
     const form = new FormData()
+    if (name.trim()) form.append('name', name.trim())
     form.append('xlsxFile', xlsxFile)
     form.append('repFile', repFile)
     return request<CalculationRun>(`/api/cases/${caseId}/runs/draft`, {
@@ -101,6 +104,7 @@ export const api = {
   executeRun: (caseId: number, runId: number) =>
     request<CalculationRun>(`/api/cases/${caseId}/runs/${runId}/execute`, { method: 'POST' }),
   downloadResult: (runId: number) => requestBlob(`/api/runs/${runId}/result`),
+  equipmentCosts: (runId: number) => request<EquipmentCosts>(`/api/runs/${runId}/equipment-costs`),
 
   listEquipmentSettings: (caseId: number) =>
     request<EquipmentSetting[]>(`/api/cases/${caseId}/equipment-settings`),
@@ -119,6 +123,8 @@ export const api = {
   updateFormula: (id: number, data: FormulaTemplateInput) =>
     request<FormulaTemplate>(`/api/formulas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteFormula: (id: number) => request<void>(`/api/formulas/${id}`, { method: 'DELETE' }),
+
+  utilityPrices: () => request<Record<string, UtilityPrice>>('/api/utility-prices'),
 }
 
 export function triggerBrowserDownload(blob: Blob, filename: string): void {

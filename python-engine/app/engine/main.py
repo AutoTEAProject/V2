@@ -58,5 +58,11 @@ calOPEX(CAPEX, flowData, OPEX, utility)
 calProfitAnalysis(CAPEX, OPEX, profitAnalysis, flowData)
 printout(inputData, cost, utility, CAPEX, OPEX, profitAnalysis)
 
+# 장치별/수식별로 실제 계산된 장치비(EQUIPMENT COST)를 프론트의 장치비 설정 화면에서
+# 보여줄 수 있도록 별도 JSON으로도 남겨둔다. default=float는 pandas/numpy 숫자형을
+# 표준 float으로 안전하게 변환하기 위함.
+with open("cost_result.json", "w", encoding="utf-8") as f:
+	json.dump(cost, f, default=float)
+
 # except Exception as e:
 # 	print("Error calc:", e)

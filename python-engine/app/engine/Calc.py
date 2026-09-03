@@ -238,8 +238,13 @@ def calProfitAnalysis(CAPEX, OPEX, profitAnalysis, flowData):
 	profitAnalysis["OPEX"] = OPEX["OPEX"][1]
 	profitAnalysis["Depreciation [USD/yr]"] = CAPEX["Fixed capital investment (FCI)"][1] / profitAnalysisData["depreciationLifetime"]
 	for output_stream in outputFlow:
-		profitAnalysis[output_stream + " annual amount of product [ton/yr]"] = outputFlow[output_stream] * calcOPEXdata["plantOperationHours"] / 1000
+		annualAmount = outputFlow[output_stream] * calcOPEXdata["plantOperationHours"] / 1000
+		profitAnalysis[output_stream + " annual amount of product [ton/yr]"] = annualAmount
 		# for key in material:
 			# profitAnalysis[output_stream + " annual amount of product [ton/yr]"] += flowData[key] * calcOPEXdata["plantOperationHours"] * lawMaterialWeightData[key] / 1000  # ton/yr
 		# profitAnalysis[output_stream + " manufacturing cost [USD/ton]"] = 0
-		profitAnalysis[output_stream + " manufacturing cost [USD/ton]"] = (profitAnalysis["OPEX"] + profitAnalysis["Depreciation [USD/yr]"]) / profitAnalysis[output_stream + " annual amount of product [ton/yr]"]
+		if annualAmount == 0:
+			# input.rep에서 stream을 못 찾아 생산량이 0으로 처리된 경우(Parse.py의 parseFlowName 참고) 0으로 나눌 수 없어 건너뜀
+			profitAnalysis[output_stream + " manufacturing cost [USD/ton]"] = None
+		else:
+			profitAnalysis[output_stream + " manufacturing cost [USD/ton]"] = (profitAnalysis["OPEX"] + profitAnalysis["Depreciation [USD/yr]"]) / annualAmount

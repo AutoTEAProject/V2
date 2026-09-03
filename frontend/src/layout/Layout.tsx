@@ -13,7 +13,6 @@ export function Layout() {
             <NavLink to="/" end>
               프로젝트
             </NavLink>
-            <NavLink to="/formulas">수식 라이브러리</NavLink>
           </nav>
         </div>
         <div className="app-header-right">

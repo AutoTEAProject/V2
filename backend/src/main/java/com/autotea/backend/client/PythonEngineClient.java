@@ -2,10 +2,12 @@ package com.autotea.backend.client;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -59,5 +61,17 @@ public class PythonEngineClient {
     }
 
     public record EquipmentInfo(String name, String type) {
+    }
+
+    public Map<String, UtilityPrice> utilityPrices() {
+        return pythonEngineWebClient.get()
+                .uri("/config/utility-prices")
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, UtilityPrice>>() {
+                })
+                .block();
+    }
+
+    public record UtilityPrice(double value, String unit) {
     }
 }

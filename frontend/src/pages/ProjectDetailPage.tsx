@@ -3,9 +3,10 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { RunTab } from './RunTab'
-import { EquipmentSettingsTab } from './EquipmentSettingsTab'
+import { EquipmentCostSettingsTab } from './EquipmentCostSettingsTab'
+import { UtilitySettingsTab } from './UtilitySettingsTab'
 
-type Tab = 'run' | 'settings'
+type Tab = 'run' | 'cost' | 'utility'
 
 export function ProjectDetailPage() {
   const { caseId } = useParams<{ caseId: string }>()
@@ -35,15 +36,23 @@ export function ProjectDetailPage() {
         </button>
         <button
           type="button"
-          className={tab === 'settings' ? 'tab active' : 'tab'}
-          onClick={() => setTab('settings')}
+          className={tab === 'cost' ? 'tab active' : 'tab'}
+          onClick={() => setTab('cost')}
         >
-          장치비 · Utility 설정
+          장치비 설정
+        </button>
+        <button
+          type="button"
+          className={tab === 'utility' ? 'tab active' : 'tab'}
+          onClick={() => setTab('utility')}
+        >
+          Utility 설정
         </button>
       </div>
 
-      {tab === 'run' && <RunTab caseId={id} />}
-      {tab === 'settings' && <EquipmentSettingsTab caseId={id} />}
+      {tab === 'run' && <RunTab caseId={id} onGoToSettings={() => setTab('cost')} />}
+      {tab === 'cost' && <EquipmentCostSettingsTab caseId={id} />}
+      {tab === 'utility' && <UtilitySettingsTab caseId={id} />}
     </div>
   )
 }
