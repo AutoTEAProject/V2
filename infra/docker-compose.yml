@@ -23,10 +23,7 @@ services:
       context: ../python-engine
     restart: unless-stopped
     environment:
-      RUNS_DIR: /data/runs
       CALC_TIMEOUT_SECONDS: ${CALC_TIMEOUT_SECONDS:-300}
-    volumes:
-      - run-data:/data/runs
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s
@@ -43,14 +40,11 @@ services:
       DB_NAME: ${DB_NAME:-autotea}
       DB_USERNAME: ${DB_USERNAME:-autotea}
       DB_PASSWORD: ${DB_PASSWORD:-autotea}
-      RUN_DIR: /data/runs
       PYTHON_ENGINE_URL: http://python-engine:8000
       PYTHON_ENGINE_TIMEOUT: ${CALC_TIMEOUT_SECONDS:-300}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID must be set}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
-    volumes:
-      - run-data:/data/runs
     ports:
       - "${BACKEND_PORT:-8081}:8080"
     depends_on:
@@ -59,6 +53,19 @@ services:
       python-engine:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8081}
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID must be set}
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+    ports:
+      - "${FRONTEND_PORT:-5174}:8080"
+    depends_on:
+      - backend
+
 volumes:
   db-data:
-  run-data:

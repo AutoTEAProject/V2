@@ -4,9 +4,8 @@ import com.autotea.backend.domain.CalculationRun;
 import com.autotea.backend.dto.RunResponse;
 import com.autotea.backend.service.RunService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -62,12 +60,12 @@ public class RunController {
     }
 
     @GetMapping("/api/runs/{id}/result")
-    public ResponseEntity<Resource> downloadResult(@PathVariable Long id) {
+    public ResponseEntity<byte[]> downloadResult(@PathVariable Long id) {
         CalculationRun run = runService.getOrThrow(id);
-        Path resultFile = runService.resultFile(run);
-        Resource resource = new FileSystemResource(resultFile);
+        byte[] data = runService.resultData(run);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"output.xlsx\"")
-                .body(resource);
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(data);
     }
 }

@@ -47,8 +47,22 @@ public class CalculationRun {
     @Column(name = "input_rep_name")
     private String inputRepName;
 
-    @Column(name = "result_path", length = 500)
-    private String resultPath;
+    /**
+     * 업로드된 input.xlsx/input.rep 원본 바이트. 재실행(같은 파일, 다른 설정) 시 다시 업로드받지 않고
+     * 이걸 그대로 python-engine에 재전송하기 위해 보관한다(서비스 간 공유 디스크가 없는 배포 환경 전제).
+     */
+    @Column(name = "input_xlsx_data", columnDefinition = "bytea")
+    private byte[] inputXlsxData;
+
+    @Column(name = "input_rep_data", columnDefinition = "bytea")
+    private byte[] inputRepData;
+
+    @Column(name = "result_data", columnDefinition = "bytea")
+    private byte[] resultData;
+
+    /** 장치 이름 -> (수식 이름 -> 계산된 값들) JSON. SUCCESS run에서만 채워짐. */
+    @Column(name = "cost_result", columnDefinition = "TEXT")
+    private String costResult;
 
     /** parse 단계에서 발견된 장치 목록(JSON: [{"name":..,"type":..}]) 스냅샷. */
     @Column(name = "equipment_snapshot", columnDefinition = "TEXT")

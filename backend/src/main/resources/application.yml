@@ -16,13 +16,13 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+  codec:
+    max-in-memory-size: 50MB
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 app:
-  storage:
-    run-dir: ${RUN_DIR:/data/runs}
   python-engine:
     base-url: ${PYTHON_ENGINE_URL:http://localhost:8000}
     timeout-seconds: ${PYTHON_ENGINE_TIMEOUT:300}

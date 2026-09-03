@@ -2,6 +2,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ENGINE_DIR = Path(__file__).resolve().parent / "engine"
@@ -14,63 +15,68 @@ class CalculationError(Exception):
         self.logs = logs
 
 
-def parse_equipment(runs_base: Path, run_id: str, timeout: int = 300) -> tuple[list[dict], str]:
+def parse_equipment(xlsx_bytes: bytes, rep_bytes: bytes, timeout: int = 300) -> tuple[list[dict], str]:
     """
-    input.xlsx/input.rep만으로 장치 이름+타입 목록을 뽑아낸다(원가 계산은 하지 않음).
-    Java 백엔드가 이 목록을 보여주고 장치비/utility 설정을 받은 뒤 execute()를 호출하는 흐름의 앞단.
+    input.xlsx/input.rep 바이트만으로 장치 이름+타입 목록을 뽑아낸다(원가 계산은 하지 않음).
+    호출마다 새 임시 디렉터리를 만들어 격리하고 끝나면 지운다(backend와 디스크를 공유하지 않는다).
     """
-    target_dir = runs_base / run_id
-    input_dir = target_dir / "input"
+    with tempfile.TemporaryDirectory(prefix="autotea-parse-") as tmp:
+        target_dir = Path(tmp)
+        input_dir = target_dir / "input"
+        input_dir.mkdir()
+        (input_dir / "input.xlsx").write_bytes(xlsx_bytes)
+        (input_dir / "input.rep").write_bytes(rep_bytes)
 
-    if not (input_dir / "input.xlsx").exists() or not (input_dir / "input.rep").exists():
-        raise CalculationError(f"run {run_id}에 input.xlsx / input.rep가 없습니다: {input_dir}")
+        result = subprocess.run(
+            [sys.executable, str(ENGINE_DIR / "main.py"), "--parse-only"],
+            cwd=target_dir,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        logs = (result.stdout or "") + (result.stderr or "")
 
-    result = subprocess.run(
-        [sys.executable, str(ENGINE_DIR / "main.py"), "--parse-only"],
-        cwd=target_dir,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    logs = (result.stdout or "") + (result.stderr or "")
+        parse_result_file = target_dir / "parse_result.json"
+        if result.returncode != 0 or not parse_result_file.exists():
+            raise CalculationError(f"장치 파싱 실패 (exit code {result.returncode})", logs=logs)
 
-    parse_result_file = target_dir / "parse_result.json"
-    if result.returncode != 0 or not parse_result_file.exists():
-        raise CalculationError(f"장치 파싱 실패 (exit code {result.returncode})", logs=logs)
+        with open(parse_result_file, encoding="utf-8") as f:
+            equipment = json.load(f)
 
-    with open(parse_result_file) as f:
-        equipment = json.load(f)
-
-    return equipment, logs
+        return equipment, logs
 
 
-def execute(runs_base: Path, run_id: str, timeout: int = 300) -> tuple[Path, str]:
+def execute(xlsx_bytes: bytes, rep_bytes: bytes, equipment_config: dict, timeout: int = 300) -> tuple[bytes, dict, str]:
     """
-    runs_base/{run_id}/input/ 아래 input.xlsx, input.rep가 이미 있다고 가정하고
-    (Java 백엔드가 공유 볼륨에 미리 저장해둔다), MaterialData.xlsx를 채워 넣은 뒤
-    기존 v1 main.py를 그 디렉토리를 cwd로 서브프로세스 실행한다.
-    v1 코드가 "./input/..." 상대경로와 "./output.xlsx" 상대경로를 그대로 쓰기 때문에,
-    로직을 고치지 않고 실행 위치만 격리하는 방식이다.
+    실제 TEA 계산을 실행하고 (output.xlsx 바이트, 장치별 계산 원가, 로그)를 돌려준다.
+    parse_equipment와 마찬가지로 요청마다 격리된 임시 디렉터리를 쓰고 끝나면 지운다.
     """
-    target_dir = runs_base / run_id
-    input_dir = target_dir / "input"
+    with tempfile.TemporaryDirectory(prefix="autotea-calc-") as tmp:
+        target_dir = Path(tmp)
+        input_dir = target_dir / "input"
+        input_dir.mkdir()
+        (input_dir / "input.xlsx").write_bytes(xlsx_bytes)
+        (input_dir / "input.rep").write_bytes(rep_bytes)
+        shutil.copy(DEFAULT_MATERIAL_DATA, input_dir / "MaterialData.xlsx")
+        (input_dir / "equipment_config.json").write_text(json.dumps(equipment_config), encoding="utf-8")
 
-    if not (input_dir / "input.xlsx").exists() or not (input_dir / "input.rep").exists():
-        raise CalculationError(f"run {run_id}에 input.xlsx / input.rep가 없습니다: {input_dir}")
+        result = subprocess.run(
+            [sys.executable, str(ENGINE_DIR / "main.py")],
+            cwd=target_dir,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        logs = (result.stdout or "") + (result.stderr or "")
 
-    shutil.copy(DEFAULT_MATERIAL_DATA, input_dir / "MaterialData.xlsx")
+        output_file = target_dir / "output.xlsx"
+        if result.returncode != 0 or not output_file.exists():
+            raise CalculationError(f"계산 실패 (exit code {result.returncode})", logs=logs)
 
-    result = subprocess.run(
-        [sys.executable, str(ENGINE_DIR / "main.py")],
-        cwd=target_dir,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    logs = (result.stdout or "") + (result.stderr or "")
+        cost_file = target_dir / "cost_result.json"
+        cost_result = {}
+        if cost_file.exists():
+            with open(cost_file, encoding="utf-8") as f:
+                cost_result = json.load(f)
 
-    output_file = target_dir / "output.xlsx"
-    if result.returncode != 0 or not output_file.exists():
-        raise CalculationError(f"계산 실패 (exit code {result.returncode})", logs=logs)
-
-    return output_file, logs
+        return output_file.read_bytes(), cost_result, logs

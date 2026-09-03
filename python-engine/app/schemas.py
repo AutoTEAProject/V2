@@ -1,13 +1,12 @@
+from typing import Any
+
 from pydantic import BaseModel
-
-
-class CalculateRequest(BaseModel):
-    runId: str
 
 
 class CalculateResponse(BaseModel):
     status: str
-    resultPath: str | None = None
+    outputXlsxBase64: str | None = None
+    costResult: dict[str, dict[str, dict[str, Any]]] | None = None
     logs: str | None = None
     errorMessage: str | None = None
 
