@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { EquipmentSettingItem, UtilityPrice, UtilityType } from '../api/types'
 import { EQUIPMENT_TYPE_LABEL, UTILITY_TYPES, UTILITY_TYPE_LABEL } from '../api/types'
@@ -14,10 +15,14 @@ export function UtilitySettingsTab({ caseId }: { caseId: number }) {
   if (isLoading || pricesQuery.isLoading) return <p>불러오는 중...</p>
   if (error || pricesQuery.error) return <p className="error-text">설정을 불러오지 못했습니다.</p>
 
-  const prices = pricesQuery.data ?? {}
+  const priceList = pricesQuery.data ?? []
+  const prices: Record<string, UtilityPrice> = {}
+  for (const p of priceList) prices[p.utilityType] = p
 
   return (
     <div>
+      <UtilityPriceCard prices={priceList} />
+
       <p className="muted">
         장치가 어떤 utility를 소비하는 것으로 계산할지 선택합니다. 여러 개 선택 가능하고, 아예 계산하지
         않으려면 전부 해제하면 됩니다. REACT(반응기)는 utility 계산 대상이 아닙니다.
@@ -77,6 +82,91 @@ export function UtilitySettingsTab({ caseId }: { caseId: number }) {
       </button>
       {saveMutation.isError && <p className="error-text">저장에 실패했습니다.</p>}
       {saveMutation.isSuccess && <p className="success-text">저장했습니다.</p>}
+    </div>
+  )
+}
+
+function UtilityPriceCard({ prices }: { prices: UtilityPrice[] }) {
+  const queryClient = useQueryClient()
+  const [editingType, setEditingType] = useState<UtilityType | null>(null)
+  const [draft, setDraft] = useState('')
+
+  const updateMutation = useMutation({
+    mutationFn: ({ utilityType, value }: { utilityType: UtilityType; value: number }) =>
+      api.updateUtilityPrice(utilityType, value),
+    onSuccess: () => {
+      setEditingType(null)
+      void queryClient.invalidateQueries({ queryKey: ['utility-prices'] })
+    },
+  })
+
+  const startEdit = (price: UtilityPrice) => {
+    setEditingType(price.utilityType)
+    setDraft(String(price.value))
+  }
+
+  const submit = (utilityType: UtilityType) => {
+    const value = Number(draft)
+    if (Number.isNaN(value) || value < 0) return
+    updateMutation.mutate({ utilityType, value })
+  }
+
+  return (
+    <div className="card">
+      <h2>Utility 단가</h2>
+      <p className="muted">
+        여기서 바꾼 단가는 모든 프로젝트의 계산에 공통으로 적용됩니다(수식 라이브러리처럼 전역 설정).
+      </p>
+      <table className="utility-price-table">
+        <thead>
+          <tr>
+            <th>Utility</th>
+            <th>단가</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {prices.map((price) => (
+            <tr key={price.utilityType}>
+              <td>{UTILITY_TYPE_LABEL[price.utilityType]}</td>
+              <td>
+                {editingType === price.utilityType ? (
+                  <div className="utility-price-edit">
+                    <input value={draft} onChange={(e) => setDraft(e.target.value)} />
+                    <span className="muted small">{price.unit}</span>
+                  </div>
+                ) : (
+                  <span>
+                    {price.value} {price.unit}
+                  </span>
+                )}
+              </td>
+              <td className="run-actions">
+                {editingType === price.utilityType ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary"
+                      disabled={updateMutation.isPending}
+                      onClick={() => submit(price.utilityType)}
+                    >
+                      저장
+                    </button>
+                    <button type="button" className="btn btn-sm" onClick={() => setEditingType(null)}>
+                      취소
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="btn btn-sm" onClick={() => startEdit(price)}>
+                    수정
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {updateMutation.isError && <p className="error-text">저장에 실패했습니다.</p>}
     </div>
   )
 }

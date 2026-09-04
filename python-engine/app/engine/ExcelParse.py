@@ -3,10 +3,18 @@ import json
 import pandas as pd
 from data import utilityCostData, calcOPEXdata, profitAnalysisData, HeaterParam, HeatExchangerParam, CompressorParam, reactorParam, equipmentConfig
 
+# UtilityType(백엔드) -> utilityCostData 키. equipment_config.json의 "utilityPrices"로 덮어쓸 때 쓴다.
+UTILITY_TYPE_TO_KEY = {
+	"COOLING": "CoolingWaterPrice",
+	"HOT": "NGprice",
+	"ELECTRICITY": "electricityCostPerKWH",
+	"MPSG": "StreamPrice(MPS)",
+}
+
 def parseUtilityParam():
 	filename = "./input/MaterialData.xlsx"
 	df = pd.read_excel(io = filename, sheet_name='Utility Parameter', header=1, engine='openpyxl')
- 
+
 	for i in range(0, 5):
 		key = df.iat[i, 1]
 		value = df.iat[i, 2]
@@ -44,6 +52,12 @@ def parseEquipmentConfig():
 		HeatExchangerParam[name] = {"K1": params["K1"], "K2": params["K2"], "K3": params["K3"]}
 	for name, params in coefficients.get("COMP", {}).items():
 		CompressorParam[name] = {"K1": params["K1"], "K2": params["K2"], "K3": params["K3"]}
+
+	# utility 단가는 MaterialData.xlsx가 기본값이고, 프로젝트에서 따로 설정했으면 그 값으로 덮어쓴다.
+	for utilityType, price in config.get("utilityPrices", {}).items():
+		key = UTILITY_TYPE_TO_KEY.get(utilityType)
+		if key and "value" in price:
+			utilityCostData[key] = float(price["value"])
 
 def parsereactorParam():
 	xlsxfilename = "./input/MaterialData.xlsx"

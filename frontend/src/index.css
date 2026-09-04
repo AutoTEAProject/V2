@@ -535,3 +535,18 @@ td {
 .stream-cost-row input {
   width: 100px;
 }
+
+.utility-price-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.utility-price-edit input {
+  width: 120px;
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}

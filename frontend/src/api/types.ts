@@ -86,8 +86,9 @@ export interface EquipmentSettingItem {
 }
 
 export interface UtilityPrice {
+  utilityType: UtilityType
   value: number
-  unit: string | null
+  unit: string
 }
 
 /** 장치 이름 -> (수식 이름 -> 실제 계산된 EQUIPMENT COST[USD]) */

@@ -1,7 +1,6 @@
 package com.autotea.backend.client;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -51,15 +50,6 @@ public class PythonEngineClient {
                 .block();
     }
 
-    public Map<String, UtilityPrice> utilityPrices() {
-        return pythonEngineWebClient.get()
-                .uri("/config/utility-prices")
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, UtilityPrice>>() {
-                })
-                .block();
-    }
-
     public record ParseResponse(
             String status,
             List<EquipmentInfo> equipment,
@@ -87,8 +77,5 @@ public class PythonEngineClient {
     }
 
     public record EquipmentInfo(String name, String type) {
-    }
-
-    public record UtilityPrice(double value, String unit) {
     }
 }

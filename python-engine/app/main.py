@@ -6,7 +6,6 @@ from fastapi import FastAPI, File, Form, UploadFile
 
 from app.runner import CalculationError, execute, parse_equipment
 from app.schemas import CalculateResponse, EquipmentInfo, ParseResponse
-from app.utility_prices import read_utility_prices
 
 CALC_TIMEOUT_SECONDS = int(os.environ.get("CALC_TIMEOUT_SECONDS", "300"))
 
@@ -49,8 +48,3 @@ async def calculate(
         return CalculateResponse(status="SUCCESS", outputXlsxBase64=output_base64, costResult=cost_result, logs=logs)
     except CalculationError as e:
         return CalculateResponse(status="FAILED", errorMessage=str(e), logs=e.logs)
-
-
-@app.get("/config/utility-prices")
-def utility_prices() -> dict:
-    return read_utility_prices()

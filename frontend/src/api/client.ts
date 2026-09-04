@@ -125,7 +125,12 @@ export const api = {
     request<FormulaTemplate>(`/api/formulas/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteFormula: (id: number) => request<void>(`/api/formulas/${id}`, { method: 'DELETE' }),
 
-  utilityPrices: () => request<Record<string, UtilityPrice>>('/api/utility-prices'),
+  utilityPrices: () => request<UtilityPrice[]>('/api/utility-prices'),
+  updateUtilityPrice: (utilityType: string, value: number) =>
+    request<UtilityPrice>(`/api/utility-prices/${utilityType}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value }),
+    }),
 
   listStreamSettings: (caseId: number) =>
     request<StreamSetting[]>(`/api/cases/${caseId}/stream-settings`),

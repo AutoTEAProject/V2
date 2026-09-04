@@ -38,6 +38,7 @@ public class RunService {
     private final CaseService caseService;
     private final EquipmentSettingService equipmentSettingService;
     private final StreamSettingService streamSettingService;
+    private final UtilityPriceService utilityPriceService;
     private final PythonEngineClient pythonEngineClient;
     private final ObjectMapper objectMapper;
 
@@ -96,6 +97,7 @@ public class RunService {
                     objectMapper.readValue(run.getEquipmentSnapshot(), EquipmentInstanceResponse[].class));
             Map<String, Object> equipmentConfig = equipmentSettingService.buildEngineConfig(caseId, instances);
             equipmentConfig.put("streams", streamSettingService.buildStreamConfig(caseId));
+            equipmentConfig.put("utilityPrices", utilityPriceService.buildConfig());
             equipmentConfigJson = objectMapper.writeValueAsString(equipmentConfig);
         } catch (JacksonException e) {
             run.setStatus(RunStatus.FAILED);
