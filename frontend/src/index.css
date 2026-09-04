@@ -491,3 +491,47 @@ td {
   max-height: 320px;
   overflow-y: auto;
 }
+
+.stream-columns {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.stream-column {
+  flex: 1;
+  min-width: 240px;
+}
+
+.stream-multiselect {
+  width: 100%;
+  font: inherit;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.stream-multiselect option {
+  padding: 4px 6px;
+}
+
+.stream-cost-list {
+  margin-top: 12px;
+}
+
+.stream-cost-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stream-cost-row label {
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.stream-cost-row input {
+  width: 100px;
+}
