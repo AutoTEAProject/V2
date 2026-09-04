@@ -4,7 +4,7 @@ from enums import EquipLen
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.styles import Font
+from openpyxl.styles import Font, PatternFill
 from data import HeaterParam, HeatExchangerParam, CompressorParam, reactorParam, ReactParam, atomicWeight, utilityCostData, equipmentConfig, HTX_CAPACITY_PARAM, CEPCI_BASE, CEPCI_CURRENT
 from openpyxl import load_workbook
 
@@ -239,6 +239,51 @@ def safe_df(df):
         return df.reset_index()
     return df
 
+# 결과 엑셀의 Equipment Cost/UTILITY 시트를 장치 종류별로 묶어서 보여줄 때 쓰는 순서와 표시 이름.
+# checkType()이 돌려주는 종류를 전부 포함하되, 원가 계산과 관련 있는 4종류(HTX/HEX/COMP/REACT)를 먼저 보여준다.
+EQUIPMENT_TYPE_ORDER = ["HTX", "HEX", "COMP", "REACT", "MIX", "FLASH", "SEP", "VALVE", "DIST", "ETC"]
+EQUIPMENT_TYPE_LABEL = {
+    "HTX": "HTX (가열기)",
+    "HEX": "HEX (열교환기)",
+    "COMP": "COMP (압축기)",
+    "REACT": "REACT (반응기)",
+    "MIX": "MIX (혼합기)",
+    "FLASH": "FLASH (플래시 드럼)",
+    "SEP": "SEP (분리기)",
+    "VALVE": "VALVE (밸브/펌프)",
+    "DIST": "DIST (증류탑)",
+    "ETC": "ETC (기타)",
+}
+
+def group_keys_by_type(inputData, keys):
+    """keys(장치 이름 목록)를 inputData[key]["Type"] 기준으로 묶어서, 표시 순서(EQUIPMENT_TYPE_ORDER)대로
+    (타입, 그 타입에 속한 장치 이름 목록) 튜플을 하나씩 내놓는다. 각 그룹 안에서는 원래 순서를 유지한다."""
+    byType = {}
+    for key in keys:
+        equipType = inputData.get(key, {}).get("Type", "ETC")
+        byType.setdefault(equipType, []).append(key)
+    order = EQUIPMENT_TYPE_ORDER + [t for t in byType if t not in EQUIPMENT_TYPE_ORDER]
+    for equipType in order:
+        groupKeys = byType.get(equipType)
+        if groupKeys:
+            yield equipType, groupKeys
+
+def write_section_header(ws, title):
+    ws.append([title])
+    cell = ws.cell(row=ws.max_row, column=1)
+    cell.font = Font(bold=True, size=13, color="FFFFFF")
+    cell.fill = PatternFill("solid", fgColor="004085")
+    ws.append([])
+
+def write_utility_block(ws, equipmentName, metrics):
+    """장치 하나(equipmentName)의 utility 사용량/비용 지표(metrics: 지표 이름 -> 값)를 한 줄짜리 표로 적는다."""
+    ws.append([equipmentName])
+    ws.cell(row=ws.max_row, column=1).font = Font(bold=True, color="004085")
+    if metrics:
+        ws.append(list(metrics.keys()))
+        ws.append(list(metrics.values()))
+    ws.append([])
+
 def write_equipment_cost_block(ws, equipmentName, formulas):
     """
     장치 하나(equipmentName)에 대해 후보 수식(formulas: 수식 이름 -> 필드 dict)을 표로 적는다.
@@ -455,16 +500,22 @@ def printout(inputData, cost, utility, CAPEX, OPEX, profitAnalysis, equipmentCos
         ws.append([name] + [row[col] for col in columns[1:]])  # 첫 열은 name, 나머지는 columns 순서대로
     autofit(ws)
 
-    # 시트 2: UTILITY
+    # 시트 2: UTILITY. 장치 종류(HTX/HEX/COMP/REACT/...)별로 묶어서 보여준다.
     ws2 = wb.create_sheet("UTILITY")
-    for r in dataframe_to_rows(pd.DataFrame(utility), header=True): ws2.append(r)
+    for equipType, keys in group_keys_by_type(inputData, utility.keys()):
+        write_section_header(ws2, EQUIPMENT_TYPE_LABEL.get(equipType, equipType))
+        for key in keys:
+            write_utility_block(ws2, key, utility[key])
     autofit(ws2)
-    
+
     # 시트 3: CAPCOST (블럭 스타일). EQUIPMENT COST 칸은 실제 엑셀 수식으로 적는다(write_equipment_cost_block 참고).
+    # 이것도 UTILITY 시트와 마찬가지로 장치 종류별로 묶어서 보여준다.
     ws3 = wb.create_sheet("Equipment Cost")
     costCellRefs = {}
-    for k, v in cost.items():
-        costCellRefs[k] = write_equipment_cost_block(ws3, k, v)
+    for equipType, keys in group_keys_by_type(inputData, cost.keys()):
+        write_section_header(ws3, EQUIPMENT_TYPE_LABEL.get(equipType, equipType))
+        for key in keys:
+            costCellRefs[key] = write_equipment_cost_block(ws3, key, cost[key])
     autofit(ws3)
 
     # 시트 4: CAPEX. "Equipment cost" 합계와 FCI에서 파생되는 나머지 항목 전부 실제 엑셀 수식으로 적는다
