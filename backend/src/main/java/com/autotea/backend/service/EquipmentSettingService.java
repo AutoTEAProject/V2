@@ -1,5 +1,6 @@
 package com.autotea.backend.service;
 
+import com.autotea.backend.domain.CostSource;
 import com.autotea.backend.domain.EquipmentFormulaTemplate;
 import com.autotea.backend.domain.EquipmentType;
 import com.autotea.backend.domain.ProjectEquipmentSetting;
@@ -68,6 +69,7 @@ public class EquipmentSettingService {
                     .orElseGet(() -> new ProjectEquipmentSetting(teaCase, item.equipmentType(), instanceName));
 
             setting.setSkipCost(item.skipCost());
+            setting.setCostSource(item.costSource() == null ? CostSource.FORMULA : item.costSource());
             setting.setDefaultFormula(item.defaultFormulaTemplateId() == null
                     ? null
                     : formulaService.getOrThrow(item.defaultFormulaTemplateId()));
@@ -103,6 +105,7 @@ public class EquipmentSettingService {
             Map<String, Object> equipmentEntry = new LinkedHashMap<>();
             equipmentEntry.put("type", type.name());
             equipmentEntry.put("skipCost", effective.skipCost());
+            equipmentEntry.put("costSource", effective.costSource().name());
             equipmentEntry.put("defaultFormula", effective.defaultFormula() == null ? null : effective.defaultFormula().getName());
             equipmentEntry.put("selectedFormulas", effective.selectedFormulas().stream().map(EquipmentFormulaTemplate::getName).toList());
             equipmentEntry.put("utilityTypes", effective.utilityTypes().stream().map(Enum::name).toList());
@@ -140,7 +143,7 @@ public class EquipmentSettingService {
         FormulaTemplateResponse defaultFormula = systemTemplates.isEmpty() ? null : FormulaTemplateResponse.from(systemTemplates.get(0));
         List<FormulaTemplateResponse> selected = systemTemplates.stream().map(FormulaTemplateResponse::from).toList();
         List<UtilityType> utilityTypes = type == EquipmentType.REACT ? List.of() : List.of(UtilityType.values());
-        return new EquipmentSettingResponse(type, ProjectEquipmentSetting.TYPE_DEFAULT, true, false, defaultFormula, selected, utilityTypes);
+        return new EquipmentSettingResponse(type, ProjectEquipmentSetting.TYPE_DEFAULT, true, false, CostSource.FORMULA, defaultFormula, selected, utilityTypes);
     }
 
     private String normalizeInstanceName(String instanceName) {
@@ -157,18 +160,19 @@ public class EquipmentSettingService {
 
     private record Effective(
             boolean skipCost,
+            CostSource costSource,
             EquipmentFormulaTemplate defaultFormula,
             Set<EquipmentFormulaTemplate> selectedFormulas,
             Set<UtilityType> utilityTypes
     ) {
         static Effective fromEntity(ProjectEquipmentSetting s) {
-            return new Effective(s.isSkipCost(), s.getDefaultFormula(), s.getSelectedFormulas(), s.getUtilityTypes());
+            return new Effective(s.isSkipCost(), s.getCostSource(), s.getDefaultFormula(), s.getSelectedFormulas(), s.getUtilityTypes());
         }
 
         static Effective systemDefault(EquipmentType type, List<EquipmentFormulaTemplate> systemTemplates) {
             EquipmentFormulaTemplate def = systemTemplates.isEmpty() ? null : systemTemplates.get(0);
             Set<UtilityType> utilities = type == EquipmentType.REACT ? Set.of() : Set.of(UtilityType.values());
-            return new Effective(false, def, new HashSet<>(systemTemplates), utilities);
+            return new Effective(false, CostSource.FORMULA, def, new HashSet<>(systemTemplates), utilities);
         }
     }
 }

@@ -89,6 +89,11 @@ export const api = {
       body: JSON.stringify({ name, description }),
     }),
   getCase: (id: number) => request<TeaCase>(`/api/cases/${id}`),
+  updatePlantParameters: (id: number, plantOperationHours: number, depreciationLifetime: number) =>
+    request<TeaCase>(`/api/cases/${id}/plant-parameters`, {
+      method: 'PUT',
+      body: JSON.stringify({ plantOperationHours, depreciationLifetime }),
+    }),
 
   listRuns: (caseId: number) => request<CalculationRun[]>(`/api/cases/${caseId}/runs`),
   getRun: (id: number) => request<CalculationRun>(`/api/runs/${id}`),

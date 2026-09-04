@@ -96,8 +96,8 @@ def selectedFormulaNames(key, paramDict):
 def powerLawCost(params, capacity, capacityUnit):
 	"""
 	HEX/HTX 공통 상관식: EQUIPMENT COST = 10^(K1+K2+K3) * (Capacity/10)^0.6 * (CEPCI_CURRENT/CEPCI_BASE)
-	계산 결과뿐 아니라 계산에 쓰인 입력값과 수식 문자열도 같이 돌려줘서, 결과 엑셀에서 "왜 이 금액이
-	나왔는지"를 바로 확인할 수 있게 한다.
+	계산 결과뿐 아니라 계산에 쓰인 입력값도 같이 돌려준다. "FormulaKind"는 결과 엑셀(printout)이
+	EQUIPMENT COST 셀에 어떤 모양의 수식을 넣어야 하는지 판단하는 데만 쓰는 내부 표시다.
 	"""
 	cost = ((10 ** (params["K1"] + params["K2"] + params["K3"])) * (capacity / 10) ** 0.6) * (CEPCI_CURRENT / CEPCI_BASE)
 	entry = deepcopy(params)
@@ -106,11 +106,7 @@ def powerLawCost(params, capacity, capacityUnit):
 	entry["CEPCI(base)"] = CEPCI_BASE
 	entry["CEPCI(current)"] = CEPCI_CURRENT
 	entry["EQUIPMENT COST"] = cost
-	entry["Formula"] = (
-		f"10^(K1+K2+K3) * (Capacity/10)^0.6 * (CEPCI_current/CEPCI_base) "
-		f"= 10^({params['K1']}+{params['K2']}+{params['K3']}) * ({capacity:.4g}/10)^0.6 "
-		f"* ({CEPCI_CURRENT}/{CEPCI_BASE}) = {cost:.4g}"
-	)
+	entry["FormulaKind"] = "powerLaw"
 	return entry
 
 def logPolynomialCost(params, capacity, capacityUnit):
@@ -123,11 +119,7 @@ def logPolynomialCost(params, capacity, capacityUnit):
 	entry["CEPCI(base)"] = CEPCI_BASE
 	entry["CEPCI(current)"] = CEPCI_CURRENT
 	entry["EQUIPMENT COST"] = cost
-	entry["Formula"] = (
-		f"10^(K1 + K2*log10(Capacity) + K3*log10(Capacity)^2) * (CEPCI_current/CEPCI_base) "
-		f"= 10^({params['K1']} + {params['K2']}*log10({capacity:.4g}) + {params['K3']}*log10({capacity:.4g})^2) "
-		f"* ({CEPCI_CURRENT}/{CEPCI_BASE}) = {cost:.4g}"
-	)
+	entry["FormulaKind"] = "logPoly"
 	return entry
 
 def normalizeName(name):
@@ -222,11 +214,7 @@ def calEquipmentCost(inputData, cost, utility, exceptCapacity): #react도 추가
 				reactCost = (p["Equipment Cost"] * (p["Capacity_parsed KW"] / p["Capacity [KW]"]) ** p["Scaling Factor"]) * p["Additional Param"] * (p["Cepci_recent"] / p["Cepci_before"])
 				temp["input"] = deepcopy(p)
 				temp["input"]["EQUIPMENT COST"] = reactCost
-				temp["input"]["Formula"] = (
-					f"Base Cost * (Capacity/Capacity_ref)^ScalingFactor * AdditionalParam * (CEPCI_current/CEPCI_ref) "
-					f"= {p['Equipment Cost']:.4g} * ({p['Capacity_parsed KW']:.4g}/{p['Capacity [KW]']:.4g})^{p['Scaling Factor']} "
-					f"* {p['Additional Param']} * ({p['Cepci_recent']}/{p['Cepci_before']}) = {reactCost:.4g}"
-				)
+				temp["input"]["FormulaKind"] = "reactScaling"
 			else:
 				temp["input"] = deepcopy(ReactParam["Nan"])
 				temp["input"]["EQUIPMENT COST"] = 0
@@ -251,11 +239,56 @@ def safe_df(df):
         return df.reset_index()
     return df
 
-def write_block(ws, df, title):
-    ws.append([title])
+def write_equipment_cost_block(ws, equipmentName, formulas):
+    """
+    장치 하나(equipmentName)에 대해 후보 수식(formulas: 수식 이름 -> 필드 dict)을 표로 적는다.
+    "EQUIPMENT COST" 칸은 그냥 계산된 숫자를 적는 게 아니라, 같은 행의 K1/K2/K3/Capacity/CEPCI
+    같은 셀들을 참조하는 실제 엑셀 수식(=...)으로 적어서, 엑셀에서 그 셀을 클릭하면 어떻게
+    계산됐는지 바로 보이고 값을 바꾸면 다시 계산되게 한다.
+    """
+    ws.append([equipmentName])
     ws.cell(row=ws.max_row, column=1).font = Font(bold=True, color="004085")
-    for r in dataframe_to_rows(df, index=True, header=True):
-        ws.append(r)
+
+    fieldOrder = []
+    for fields in formulas.values():
+        for field in fields:
+            if field not in fieldOrder:
+                fieldOrder.append(field)
+    ws.append(["formula"] + fieldOrder)
+
+    for formulaName, fields in formulas.items():
+        kind = fields.get("FormulaKind")
+        rowValues = [formulaName] + [fields.get(field) for field in fieldOrder]
+        ws.append(rowValues)
+        row = ws.max_row
+        colIndex = {field: i for i, field in enumerate(fieldOrder, start=2)}
+
+        def coord(field):
+            return ws.cell(row=row, column=colIndex[field]).coordinate
+
+        if kind == "powerLaw":
+            formula = (
+                f"=10^({coord('K1')}+{coord('K2')}+{coord('K3')})"
+                f"*({coord('Capacity')}/10)^0.6"
+                f"*({coord('CEPCI(current)')}/{coord('CEPCI(base)')})"
+            )
+            ws.cell(row=row, column=colIndex["EQUIPMENT COST"]).value = formula
+        elif kind == "logPoly":
+            formula = (
+                f"=10^({coord('K1')}+{coord('K2')}*LOG10({coord('Capacity')})"
+                f"+{coord('K3')}*LOG10({coord('Capacity')})^2)"
+                f"*({coord('CEPCI(current)')}/{coord('CEPCI(base)')})"
+            )
+            ws.cell(row=row, column=colIndex["EQUIPMENT COST"]).value = formula
+        elif kind == "reactScaling":
+            formula = (
+                f"={coord('Equipment Cost')}"
+                f"*({coord('Capacity_parsed KW')}/{coord('Capacity [KW]')})^{coord('Scaling Factor')}"
+                f"*{coord('Additional Param')}*({coord('Cepci_recent')}/{coord('Cepci_before')})"
+            )
+            ws.cell(row=row, column=colIndex["EQUIPMENT COST"]).value = formula
+        # kind가 없으면(ATEA, 혹은 REACT 파라미터가 없어 0으로 대체된 경우) Aspen이 준 값이거나
+        # 계산할 수식이 아예 없는 경우라서 EQUIPMENT COST는 그냥 숫자 그대로 둔다.
     ws.append([])
 
 def autofit(ws):
@@ -283,12 +316,10 @@ def printout(inputData, cost, utility, CAPEX, OPEX, profitAnalysis):
     for r in dataframe_to_rows(pd.DataFrame(utility), header=True): ws2.append(r)
     autofit(ws2)
     
-    # 시트 3: CAPCOST (블럭 스타일)
+    # 시트 3: CAPCOST (블럭 스타일). EQUIPMENT COST 칸은 실제 엑셀 수식으로 적는다(write_equipment_cost_block 참고).
     ws3 = wb.create_sheet("Equipment Cost")
-    for k,v in cost.items():
-        # print(k, v)
-        df = pd.DataFrame(v).T   # 행열 전치 추가!
-        write_block(ws3, df, k)
+    for k, v in cost.items():
+        write_equipment_cost_block(ws3, k, v)
     autofit(ws3)
 
     ws4 = wb.create_sheet("CAPEX")

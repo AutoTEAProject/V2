@@ -2,8 +2,16 @@ export type EquipmentType = 'HTX' | 'HEX' | 'COMP' | 'REACT'
 
 export type UtilityType = 'COOLING' | 'HOT' | 'ELECTRICITY' | 'MPSG'
 
+/** 장치비를 계산할 때 어떤 값을 우선 쓸지: 직접 등록한 수식(FORMULA, 기본값) vs Aspen이 준 값(ASPEN) */
+export type CostSource = 'FORMULA' | 'ASPEN'
+
 export const EQUIPMENT_TYPES: EquipmentType[] = ['HTX', 'HEX', 'COMP', 'REACT']
 export const UTILITY_TYPES: UtilityType[] = ['COOLING', 'HOT', 'ELECTRICITY', 'MPSG']
+
+export const COST_SOURCE_LABEL: Record<CostSource, string> = {
+  FORMULA: '직접 작성한 식으로 계산',
+  ASPEN: 'Aspen Plus 계산값 사용',
+}
 
 export const EQUIPMENT_TYPE_LABEL: Record<EquipmentType, string> = {
   HTX: '가열기 (HTX)',
@@ -31,6 +39,8 @@ export interface TeaCase {
   id: number
   name: string
   description: string | null
+  plantOperationHours: number
+  depreciationLifetime: number
   createdAt: string
 }
 
@@ -71,6 +81,7 @@ export interface EquipmentSetting {
   instanceName: string
   typeDefault: boolean
   skipCost: boolean
+  costSource: CostSource
   defaultFormula: FormulaTemplate | null
   selectedFormulas: FormulaTemplate[]
   utilityTypes: UtilityType[]
@@ -80,6 +91,7 @@ export interface EquipmentSettingItem {
   equipmentType: EquipmentType
   instanceName: string | null
   skipCost: boolean
+  costSource: CostSource
   defaultFormulaTemplateId: number | null
   selectedFormulaTemplateIds: number[]
   utilityTypes: UtilityType[]

@@ -15,6 +15,7 @@ function toItem(setting: EquipmentSetting): EquipmentSettingItem {
     equipmentType: setting.equipmentType,
     instanceName: setting.instanceName,
     skipCost: setting.skipCost,
+    costSource: setting.costSource,
     defaultFormulaTemplateId: setting.defaultFormula?.id ?? null,
     selectedFormulaTemplateIds: setting.selectedFormulas.map((f) => f.id),
     utilityTypes: setting.utilityTypes,

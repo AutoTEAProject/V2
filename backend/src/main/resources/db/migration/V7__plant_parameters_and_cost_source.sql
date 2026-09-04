@@ -1,0 +1,6 @@
+ALTER TABLE tea_case
+    ADD COLUMN plant_operation_hours DOUBLE PRECISION NOT NULL DEFAULT 8766,
+    ADD COLUMN depreciation_lifetime DOUBLE PRECISION NOT NULL DEFAULT 30;
+
+ALTER TABLE project_equipment_setting
+    ADD COLUMN cost_source VARCHAR(20) NOT NULL DEFAULT 'FORMULA';

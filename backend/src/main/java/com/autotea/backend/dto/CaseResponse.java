@@ -8,9 +8,18 @@ public record CaseResponse(
         Long id,
         String name,
         String description,
+        double plantOperationHours,
+        double depreciationLifetime,
         Instant createdAt
 ) {
     public static CaseResponse from(TeaCase teaCase) {
-        return new CaseResponse(teaCase.getId(), teaCase.getName(), teaCase.getDescription(), teaCase.getCreatedAt());
+        return new CaseResponse(
+                teaCase.getId(),
+                teaCase.getName(),
+                teaCase.getDescription(),
+                teaCase.getPlantOperationHours(),
+                teaCase.getDepreciationLifetime(),
+                teaCase.getCreatedAt()
+        );
     }
 }

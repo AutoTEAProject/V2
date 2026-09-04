@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import type { EquipmentSettingItem, EquipmentType, FormulaTemplate } from '../api/types'
-import { EQUIPMENT_TYPES, EQUIPMENT_TYPE_LABEL } from '../api/types'
+import type { CostSource, EquipmentSettingItem, EquipmentType, FormulaTemplate } from '../api/types'
+import { COST_SOURCE_LABEL, EQUIPMENT_TYPES, EQUIPMENT_TYPE_LABEL } from '../api/types'
 import {
   TYPE_DEFAULT,
   rowKey,
@@ -48,6 +48,7 @@ export function EquipmentCostSettingsTab({ caseId }: { caseId: number }) {
           <div className="card" key={type}>
             <h3>{EQUIPMENT_TYPE_LABEL[type]} — 타입 기본값</h3>
             <SkipCostToggle row={typeRow} onChange={updateRow} />
+            {!typeRow.skipCost && <CostSourceToggle row={typeRow} onChange={updateRow} />}
             {!typeRow.skipCost && type !== 'REACT' && (
               <FormulaSection
                 row={typeRow}
@@ -82,6 +83,7 @@ export function EquipmentCostSettingsTab({ caseId }: { caseId: number }) {
                       {overrideRow ? (
                         <>
                           <SkipCostToggle row={overrideRow} onChange={updateRow} />
+                          {!overrideRow.skipCost && <CostSourceToggle row={overrideRow} onChange={updateRow} />}
                           {!overrideRow.skipCost && type !== 'REACT' && (
                             <FormulaSection
                               row={overrideRow}
@@ -135,6 +137,38 @@ function SkipCostToggle({
       />
       이 장치는 장치비 계산 안 함
     </label>
+  )
+}
+
+const COST_SOURCES: CostSource[] = ['FORMULA', 'ASPEN']
+
+function CostSourceToggle({
+  row,
+  onChange,
+}: {
+  row: EquipmentSettingItem
+  onChange: (row: EquipmentSettingItem) => void
+}) {
+  return (
+    <div className="cost-source-toggle">
+      <span className="field-label">장치비 계산 방식</span>
+      {COST_SOURCES.map((source) => (
+        <label className="radio-line" key={source}>
+          <input
+            type="radio"
+            name={`cost-source-${row.equipmentType}-${row.instanceName}`}
+            checked={row.costSource === source}
+            onChange={() => onChange({ ...row, costSource: source })}
+          />
+          {COST_SOURCE_LABEL[source]}
+        </label>
+      ))}
+      {row.costSource === 'ASPEN' && (
+        <span className="muted small">
+          Aspen이 이 장치의 값을 제공하지 않으면 자동으로 식으로 계산한 값을 씁니다.
+        </span>
+      )}
+    </div>
   )
 }
 

@@ -66,22 +66,23 @@ def calCAPEX(inputData, cost, CAPEX):
 		if equipmentSetting(key).get("skipCost", False):
 			# print(key, "은(는) 설비비 계산에서 제외된 장비입니다.")
 			continue
-		if (inputData[key]["Type"] == "REACT"):
-			# print(key, inputData[key]["Type"], cost[key]["input"]["EQUIPMENT COST"])
-			CAPEX["Equipment cost"][1] += int(cost[key]["input"]["EQUIPMENT COST"])
-		elif(inputData[key]["Type"] == "HEX"):
-			CAPEX["Equipment cost"][1] += int(defaultFormulaCost(key, cost))
-		elif(inputData[key]["Type"] == "HTX"):
-			if ("ATEA" in cost[key] and key != "OLINHEA"):
-				# print(key, cost[key]["ATEA"]["EQUIPMENT COST"])
-				CAPEX["Equipment cost"][1] += int(cost[key]["ATEA"]["EQUIPMENT COST"])
-			else:
-				CAPEX["Equipment cost"][1] += int(defaultFormulaCost(key, cost))
-		elif (checkType(key) == "COMP"):
-			CAPEX["Equipment cost"][1] += int(defaultFormulaCost(key, cost))
-		elif ("ATEA" in cost[key]):
+		equipType = inputData[key]["Type"]
+		# HTX/HEX/COMP/REACT만 자체 원가 상관식(수식)이 있어서 "수식 vs Aspen 제공값" 선택이 의미가 있다.
+		# 그 외 타입(MIX/VALVE/SEP 등)은 수식 자체가 없으므로 Aspen이 값을 준 경우에만(ATEA) 그 값을 쓴다.
+		hasFormula = equipType in ("HTX", "HEX", "REACT") or checkType(key) == "COMP"
+		costSource = equipmentSetting(key).get("costSource", "FORMULA") if hasFormula else "ASPEN"
+
+		entryCost = 0
+		if (costSource == "ASPEN" and "ATEA" in cost[key]):
 			# print(key, cost[key]["ATEA"]["EQUIPMENT COST"])
-			CAPEX["Equipment cost"][1] += int(cost[key]["ATEA"]["EQUIPMENT COST"])
+			entryCost = cost[key]["ATEA"]["EQUIPMENT COST"]
+		elif (equipType == "REACT"):
+			entryCost = cost[key]["input"]["EQUIPMENT COST"]
+		elif (hasFormula):
+			entryCost = defaultFormulaCost(key, cost)
+		elif ("ATEA" in cost[key]):
+			entryCost = cost[key]["ATEA"]["EQUIPMENT COST"]
+		CAPEX["Equipment cost"][1] += int(entryCost)
 	CAPEX["Fixed capital investment (FCI)"].append(CAPEX["Equipment cost"][1] * 100 / 40)
 	CAPEX["Start up cost (SUC)"].append(CAPEX["Fixed capital investment (FCI)"][1] * 0.1)
 

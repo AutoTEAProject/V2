@@ -85,7 +85,7 @@ public class RunService {
     }
 
     public CalculationRun execute(Long caseId, Long runId) {
-        caseService.getOrThrow(caseId);
+        TeaCase teaCase = caseService.getOrThrow(caseId);
         CalculationRun run = getOrThrow(runId);
         if (run.getEquipmentSnapshot() == null || run.getInputXlsxData() == null || run.getInputRepData() == null) {
             throw new IllegalStateException("이 run은 아직 장치 파싱이 끝나지 않았습니다. draft 단계를 먼저 완료하세요.");
@@ -98,6 +98,10 @@ public class RunService {
             Map<String, Object> equipmentConfig = equipmentSettingService.buildEngineConfig(caseId, instances);
             equipmentConfig.put("streams", streamSettingService.buildStreamConfig(caseId));
             equipmentConfig.put("utilityPrices", utilityPriceService.buildConfig());
+            equipmentConfig.put("plantParameters", Map.of(
+                    "plantOperationHours", teaCase.getPlantOperationHours(),
+                    "depreciationLifetime", teaCase.getDepreciationLifetime()
+            ));
             equipmentConfigJson = objectMapper.writeValueAsString(equipmentConfig);
         } catch (JacksonException e) {
             run.setStatus(RunStatus.FAILED);

@@ -74,6 +74,8 @@ export function StreamSettingsTab({ caseId }: { caseId: number }) {
 
   return (
     <div>
+      <PlantParametersCard caseId={caseId} />
+
       <p className="muted">
         업로드한 input.rep에서 발견된 stream 중, 원료비 계산에 쓸 원료(입력)와 생산량 계산에 쓸
         제품(출력)을 각각 여러 개 선택합니다(Ctrl/Cmd+클릭으로 다중 선택). 선택하지 않은 stream은
@@ -144,6 +146,71 @@ export function StreamSettingsTab({ caseId }: { caseId: number }) {
         onClick={handleSave}
       >
         {saveMutation.isPending ? '저장 중...' : '설정 저장'}
+      </button>
+      {saveMutation.isError && <p className="error-text">저장에 실패했습니다.</p>}
+      {saveMutation.isSuccess && <p className="success-text">저장했습니다.</p>}
+    </div>
+  )
+}
+
+function PlantParametersCard({ caseId }: { caseId: number }) {
+  const queryClient = useQueryClient()
+  const caseQuery = useQuery({ queryKey: ['case', caseId], queryFn: () => api.getCase(caseId) })
+
+  const [hours, setHours] = useState('')
+  const [lifetime, setLifetime] = useState('')
+
+  useEffect(() => {
+    if (!caseQuery.data) return
+    setHours(String(caseQuery.data.plantOperationHours))
+    setLifetime(String(caseQuery.data.depreciationLifetime))
+  }, [caseQuery.data])
+
+  const saveMutation = useMutation({
+    mutationFn: () => api.updatePlantParameters(caseId, Number(hours), Number(lifetime)),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['case', caseId] })
+    },
+  })
+
+  if (caseQuery.isLoading) return null
+  if (caseQuery.error || !caseQuery.data) return <p className="error-text">플랜트 파라미터를 불러오지 못했습니다.</p>
+
+  const hoursValid = Number(hours) > 0
+  const lifetimeValid = Number(lifetime) > 0
+
+  return (
+    <div className="card">
+      <h2>플랜트 파라미터</h2>
+      <p className="muted">
+        연간 가동 시간은 utility 연간 사용량/비용과 생산량 계산에, 감가상각 내용연수는 Profitability
+        Analysis의 Depreciation 계산에 쓰입니다.
+      </p>
+      <div className="plant-parameter-fields">
+        <div className="form-row">
+          <label htmlFor="plant-operation-hours">연간 가동 시간 [hours/year]</label>
+          <input
+            id="plant-operation-hours"
+            value={hours}
+            onChange={(e) => setHours(e.target.value)}
+          />
+        </div>
+        <div className="form-row">
+          <label htmlFor="depreciation-lifetime">감가상각 내용연수 [years]</label>
+          <input
+            id="depreciation-lifetime"
+            value={lifetime}
+            onChange={(e) => setLifetime(e.target.value)}
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        className="btn btn-primary btn-sm"
+        disabled={!hoursValid || !lifetimeValid || saveMutation.isPending}
+        onClick={() => saveMutation.mutate()}
+      >
+        {saveMutation.isPending ? '저장 중...' : '저장'}
       </button>
       {saveMutation.isError && <p className="error-text">저장에 실패했습니다.</p>}
       {saveMutation.isSuccess && <p className="success-text">저장했습니다.</p>}

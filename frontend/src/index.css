@@ -550,3 +550,21 @@ td {
   border-radius: 6px;
   background: var(--bg);
 }
+
+.cost-source-toggle {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 8px 0 4px;
+}
+
+.plant-parameter-fields {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.plant-parameter-fields .form-row input {
+  width: 140px;
+}

@@ -1,5 +1,6 @@
 package com.autotea.backend.dto;
 
+import com.autotea.backend.domain.CostSource;
 import com.autotea.backend.domain.EquipmentType;
 import com.autotea.backend.domain.ProjectEquipmentSetting;
 import com.autotea.backend.domain.UtilityType;
@@ -11,6 +12,7 @@ public record EquipmentSettingResponse(
         String instanceName,
         boolean typeDefault,
         boolean skipCost,
+        CostSource costSource,
         FormulaTemplateResponse defaultFormula,
         List<FormulaTemplateResponse> selectedFormulas,
         List<UtilityType> utilityTypes
@@ -21,6 +23,7 @@ public record EquipmentSettingResponse(
                 setting.getInstanceName(),
                 setting.isTypeDefault(),
                 setting.isSkipCost(),
+                setting.getCostSource(),
                 setting.getDefaultFormula() == null ? null : FormulaTemplateResponse.from(setting.getDefaultFormula()),
                 setting.getSelectedFormulas().stream().map(FormulaTemplateResponse::from).toList(),
                 setting.getUtilityTypes().stream().toList()

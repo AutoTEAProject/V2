@@ -1,5 +1,6 @@
 package com.autotea.backend.dto;
 
+import com.autotea.backend.domain.CostSource;
 import com.autotea.backend.domain.EquipmentType;
 import com.autotea.backend.domain.UtilityType;
 import jakarta.validation.constraints.NotEmpty;
@@ -16,6 +17,8 @@ public record EquipmentSettingRequest(
             /** null 또는 "*" 이면 장치 타입 기본값, 그 외에는 개별 장치 이름 오버라이드 */
             String instanceName,
             boolean skipCost,
+            /** null이면 FORMULA(기본값)로 처리 */
+            CostSource costSource,
             Long defaultFormulaTemplateId,
             List<Long> selectedFormulaTemplateIds,
             List<UtilityType> utilityTypes

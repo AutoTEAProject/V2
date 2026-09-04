@@ -2,10 +2,12 @@ package com.autotea.backend.service;
 
 import com.autotea.backend.domain.TeaCase;
 import com.autotea.backend.dto.CaseRequest;
+import com.autotea.backend.dto.PlantParameterRequest;
 import com.autotea.backend.exception.ResourceNotFoundException;
 import com.autotea.backend.repository.TeaCaseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -26,5 +28,13 @@ public class CaseService {
     public TeaCase getOrThrow(Long id) {
         return teaCaseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Case not found: " + id));
+    }
+
+    @Transactional
+    public TeaCase updatePlantParameters(Long id, PlantParameterRequest request) {
+        TeaCase teaCase = getOrThrow(id);
+        teaCase.setPlantOperationHours(request.plantOperationHours());
+        teaCase.setDepreciationLifetime(request.depreciationLifetime());
+        return teaCaseRepository.save(teaCase);
     }
 }

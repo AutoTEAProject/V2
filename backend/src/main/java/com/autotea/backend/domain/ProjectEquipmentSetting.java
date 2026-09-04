@@ -56,6 +56,10 @@ public class ProjectEquipmentSetting {
     @Column(name = "skip_cost", nullable = false)
     private boolean skipCost = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cost_source", nullable = false, length = 20)
+    private CostSource costSource = CostSource.FORMULA;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "default_formula_template_id")
     private EquipmentFormulaTemplate defaultFormula;

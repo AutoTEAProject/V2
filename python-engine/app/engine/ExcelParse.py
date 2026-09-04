@@ -59,6 +59,13 @@ def parseEquipmentConfig():
 		if key and "value" in price:
 			utilityCostData[key] = float(price["value"])
 
+	# 플랜트 가동시간/감가상각 내용연수도 MaterialData.xlsx가 기본값이고, 프로젝트에서 따로 설정했으면 덮어쓴다.
+	plantParameters = config.get("plantParameters", {})
+	if "plantOperationHours" in plantParameters:
+		calcOPEXdata["plantOperationHours"] = float(plantParameters["plantOperationHours"])
+	if "depreciationLifetime" in plantParameters:
+		profitAnalysisData["depreciationLifetime"] = float(plantParameters["depreciationLifetime"])
+
 def parsereactorParam():
 	xlsxfilename = "./input/MaterialData.xlsx"
 	df = pd.read_excel(io = xlsxfilename, sheet_name='Reactor Parameter', header=1, engine='openpyxl')
