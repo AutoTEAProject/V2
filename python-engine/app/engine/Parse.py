@@ -543,8 +543,17 @@ def	parseUtility(inputData, repfFileName, utility, exceptCapacity):
 					}
 				
 	
-		if (parseflag == 1 and "HEAT DUTY" in line and "CAL/SEC" in line):
-			temp = list(line.split("CAL/SEC"))
+		isDutyLine = parseflag == 1 and ("HEAT DUTY" in line or "DUTY FROM INLET HEAT STREAM(S)" in line)
+		if (isDutyLine and ("CAL/SEC" in line or "GCAL/HR" in line)):
+			# Aspen은 파일에 따라 HEAT DUTY를 CAL/SEC 또는 GCAL/HR로 표기하고,
+			# 일부 HEATER 블록은 "HEAT DUTY" 대신 "DUTY FROM INLET HEAT STREAM(S)"로 표기한다.
+			if ("GCAL/HR" in line):
+				unitToken = "GCAL/HR"
+				convFactor = 1163.0 # GCAL/HR -> KW (1 kcal/hr = 1.163 W)
+			else:
+				unitToken = "CAL/SEC"
+				convFactor = 0.0041868 # CAL/SEC -> KW
+			temp = list(line.split(unitToken))
 			for i in range(0, len(temp)):
 				temp[i] = temp[i].replace(" ", "").replace('\n', "").replace(',', '')
 			if (len(temp) > 1):
@@ -555,13 +564,13 @@ def	parseUtility(inputData, repfFileName, utility, exceptCapacity):
 					if (count < 0):
 						for i in range(-count):
 							num /=  10
-					else:	
+					else:
 						for i in range(int(temp3[1])):
 							num *=  10
 			else:
 				num = temp[0]
 			# num 단위변환
-			num *= 0.0041868 # CAL/SEC -> KW
+			num *= convFactor
 			if (num < 0):
 				num = num * -1
 			utility[name] = {
