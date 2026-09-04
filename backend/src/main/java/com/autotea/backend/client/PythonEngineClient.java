@@ -63,6 +63,7 @@ public class PythonEngineClient {
     public record ParseResponse(
             String status,
             List<EquipmentInfo> equipment,
+            List<String> streams,
             String logs,
             String errorMessage
     ) {

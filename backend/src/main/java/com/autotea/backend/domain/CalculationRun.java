@@ -68,6 +68,10 @@ public class CalculationRun {
     @Column(name = "equipment_snapshot", columnDefinition = "TEXT")
     private String equipmentSnapshot;
 
+    /** parse 단계에서 발견된 stream 이름 목록(JSON: ["CO2","H2",...]) 스냅샷. */
+    @Column(name = "stream_snapshot", columnDefinition = "TEXT")
+    private String streamSnapshot;
+
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 

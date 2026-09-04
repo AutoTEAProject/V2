@@ -19,5 +19,6 @@ class EquipmentInfo(BaseModel):
 class ParseResponse(BaseModel):
     status: str
     equipment: list[EquipmentInfo] | None = None
+    streams: list[str] | None = None
     logs: str | None = None
     errorMessage: str | None = None

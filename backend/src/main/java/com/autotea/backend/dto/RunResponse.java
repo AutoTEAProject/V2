@@ -14,6 +14,8 @@ public record RunResponse(
         String inputRepName,
         /** [{"name":"...","type":"HEX"}, ...] 형태의 원문 JSON. parse 단계 완료 후 채워짐. */
         String equipmentSnapshot,
+        /** ["CO2","H2",...] 형태의 원문 JSON. parse 단계 완료 후 채워짐. */
+        String streamSnapshot,
         String errorMessage,
         String logs,
         Instant createdAt,
@@ -28,6 +30,7 @@ public record RunResponse(
                 run.getInputXlsxName(),
                 run.getInputRepName(),
                 run.getEquipmentSnapshot(),
+                run.getStreamSnapshot(),
                 run.getErrorMessage(),
                 run.getLogs(),
                 run.getCreatedAt(),

@@ -24,6 +24,11 @@ ReactParam = {"Nan" : {"K1": 0, "K2": 0, "K3": 0}}
 # HTX 후보 수식들의 Capacity를 나눌 때 쓰는 고정 상수(수식 계수와 달리 사용자 설정 대상 아님)
 HTX_CAPACITY_PARAM = 0.7
 
+# HEX/HTX/COMP 원가 상관식에 쓰는 CEPCI(Chemical Engineering Plant Cost Index) 비율.
+# CEPCI_BASE는 Turton 상관식(K1/K2/K3)의 기준 시점(2001년 9월) 지수, CEPCI_CURRENT는 현재 적용 시점(2024년 6월) 지수.
+CEPCI_BASE = 397
+CEPCI_CURRENT = 798.8
+
 # Java 백엔드가 run 입력 폴더에 써주는 input/equipment_config.json 을 파싱해 채우는 값.
 # {"equipment": {"<장치이름>": {"type":.., "skipCost":.., "defaultFormula":.., "selectedFormulas":[...], "utilityTypes":[...]}},
 #  "formulaCoefficients": {"HTX": {...}, "HEX": {...}, "COMP": {...}}}

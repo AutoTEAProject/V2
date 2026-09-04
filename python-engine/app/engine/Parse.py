@@ -37,37 +37,57 @@ def parseFlowData(filename, flowName):
 			return (weight)
 
 
-def parseFlowName(flowData):
-	xlsxfilename = "./input/MaterialData.xlsx"
+def parseStreamNames(filename):
+	"""
+	input.rep의 STREAM SECTION에 등장하는 모든 stream 이름을 중복 없이 뽑아낸다.
+	원료/제품 설정 화면에서 "이 프로젝트에 어떤 stream이 있는지" 보여주기 위한 용도.
+	STREAM SECTION은 보통 한 번에 5개씩 여러 페이지로 나뉘어 반복 출력되므로 전체를 모아 합친다.
+	"""
+	fd = open(filename, mode='r')
+	lines = fd.readlines()
+	names = []
+	seen = set()
+	inBlock = False
+	for line in lines:
+		if "STREAM SECTION" in line:
+			inBlock = True
+			continue
+		if inBlock and line.strip().startswith("STREAM ID"):
+			for name in line.split()[2:]:
+				if name not in seen:
+					seen.add(name)
+					names.append(name)
+			inBlock = False
+	return names
+
+def parseFlowFromConfig(flowData, streamConfig):
+	"""
+	Java 백엔드가 만들어준 equipment_config.json의 "streams" 설정(원료/제품으로 지정된 stream과
+	원료 단가)을 바탕으로, 실제 input.rep에서 그 stream들의 유량을 찾아 flowData를 채운다.
+	예전에는 이 목록 자체가 MaterialData.xlsx의 'FlowName' 시트에 전역으로 고정되어 있었지만,
+	이제 프로젝트(케이스)마다 자유롭게 설정할 수 있다.
+	"""
 	repfilename = "./input/input.rep"
-	df = pd.read_excel(io = xlsxfilename, sheet_name='FlowName', header=1, engine='openpyxl')
-	length = len(df)
 	inputFlow = {}
 	outputFlow = {}
-	
-	for i in range(length):
-		inputFlowName = df.iat[i, 1]
-		outputFlowName = df.iat[i, 4]
-		if (pd.isna(inputFlowName) and pd.isna(outputFlowName)):
-			break;
-		if (pd.isna(inputFlowName) == False):
-			cost = float(df.iat[i, 2])
-			if (pd.isna(cost)):
-				raise TypeError("input flow의 가격을 입력해 주세요. : " + inputFlowName)
-			amount = parseFlowData(repfilename, inputFlowName) # 단위 KG/HR
-			if amount is None:
-				print(inputFlowName, ": 이 프로젝트의 input.rep에서 해당 stream을 찾을 수 없어 원료비 계산에서 제외합니다.")
-				amount = 0.0
-			inputFlow[inputFlowName] = {"amount" : amount, "cost" : cost}
-		if (pd.isna(outputFlowName) == False):
-			amount = parseFlowData(repfilename, outputFlowName) # 단위 KG/HR
-			if amount is None:
-				print(outputFlowName, ": 이 프로젝트의 input.rep에서 해당 stream을 찾을 수 없어 생산량 계산에서 제외합니다.")
-				amount = 0.0
-			outputFlow[outputFlowName] = amount
+
+	for name, meta in streamConfig.get("input", {}).items():
+		amount = parseFlowData(repfilename, name) # 단위 KG/HR
+		if amount is None:
+			print(name, ": 이 프로젝트의 input.rep에서 해당 stream을 찾을 수 없어 원료비 계산에서 제외합니다.")
+			amount = 0.0
+		inputFlow[name] = {"amount": amount, "cost": meta.get("cost") or 0.0}
+
+	for name in streamConfig.get("output", []):
+		amount = parseFlowData(repfilename, name) # 단위 KG/HR
+		if amount is None:
+			print(name, ": 이 프로젝트의 input.rep에서 해당 stream을 찾을 수 없어 생산량 계산에서 제외합니다.")
+			amount = 0.0
+		outputFlow[name] = amount
+
 	flowData["inputFlow"] = inputFlow
 	flowData["outputFlow"] = outputFlow
-	
+
 # def parseCapacity(exceptCapacity):
 # 	xlsxfilename = "./input/MaterialData.xlsx"
 # 	df = pd.read_excel(io = xlsxfilename, sheet_name='Capacity', header=1, engine='openpyxl')

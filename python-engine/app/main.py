@@ -23,8 +23,13 @@ async def parse(xlsxFile: UploadFile = File(...), repFile: UploadFile = File(...
     try:
         xlsx_bytes = await xlsxFile.read()
         rep_bytes = await repFile.read()
-        equipment, logs = parse_equipment(xlsx_bytes, rep_bytes, timeout=CALC_TIMEOUT_SECONDS)
-        return ParseResponse(status="SUCCESS", equipment=[EquipmentInfo(**e) for e in equipment], logs=logs)
+        equipment, streams, logs = parse_equipment(xlsx_bytes, rep_bytes, timeout=CALC_TIMEOUT_SECONDS)
+        return ParseResponse(
+            status="SUCCESS",
+            equipment=[EquipmentInfo(**e) for e in equipment],
+            streams=streams,
+            logs=logs,
+        )
     except CalculationError as e:
         return ParseResponse(status="FAILED", errorMessage=str(e), logs=e.logs)
 

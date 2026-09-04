@@ -6,6 +6,7 @@ import type {
   EquipmentSettingItem,
   EquipmentType,
   FormulaTemplate,
+  StreamSetting,
   TeaCase,
   UtilityPrice,
 } from './types'
@@ -125,6 +126,14 @@ export const api = {
   deleteFormula: (id: number) => request<void>(`/api/formulas/${id}`, { method: 'DELETE' }),
 
   utilityPrices: () => request<Record<string, UtilityPrice>>('/api/utility-prices'),
+
+  listStreamSettings: (caseId: number) =>
+    request<StreamSetting[]>(`/api/cases/${caseId}/stream-settings`),
+  saveStreamSettings: (caseId: number, items: StreamSetting[]) =>
+    request<StreamSetting[]>(`/api/cases/${caseId}/stream-settings`, {
+      method: 'PUT',
+      body: JSON.stringify({ items }),
+    }),
 }
 
 export function triggerBrowserDownload(blob: Blob, filename: string): void {

@@ -2,21 +2,24 @@
 import sys
 import json
 
-from Parse import parseTEA, parseHEX, parseCOMP, parseCAPCOSTParam, parseUtility, parseLawMaterial, parseEQUIP, parseFlowName, parseMPSG, parseMPS, parseHotUtility
+from Parse import parseTEA, parseHEX, parseCOMP, parseCAPCOSTParam, parseUtility, parseLawMaterial, parseEQUIP, parseStreamNames, parseFlowFromConfig, parseMPSG, parseMPS, parseHotUtility
 from Utility import calEquipmentCost, printout, inputRTX
 from Calc import calCAPEX, calUtility, calOPEX, calProfitAnalysis
 from ExcelParse import parseUtilityParam, parsereactorParam, parseEquipmentConfig
+from data import equipmentConfig
 
 inputData = {}
 inputfile = "./input/input.xlsx"
 inputrep = "./input/input.rep"
 
 if "--parse-only" in sys.argv:
-	# 원가 계산은 하지 않고 장치 이름+타입만 뽑아 parse_result.json으로 출력한다.
-	# (프론트의 장치비/utility 설정 화면에 이 프로젝트에 어떤 장치가 있는지 보여주기 위한 사전 단계)
+	# 원가 계산은 하지 않고 장치 이름+타입, stream 이름만 뽑아 parse_result.json으로 출력한다.
+	# (프론트의 장치비/utility/원료·제품 설정 화면에 이 프로젝트에 뭐가 있는지 보여주기 위한 사전 단계)
 	parseTEA(inputfile, inputData)
 	parseEQUIP(inputrep, inputData)
-	result = [{"name": name, "type": info["Type"]} for name, info in inputData.items()]
+	equipment = [{"name": name, "type": info["Type"]} for name, info in inputData.items()]
+	streams = parseStreamNames(inputrep)
+	result = {"equipment": equipment, "streams": streams}
 	with open("parse_result.json", "w", encoding="utf-8") as f:
 		json.dump(result, f)
 	sys.exit(0)
@@ -33,7 +36,7 @@ try:
 	parseUtilityParam()
 	parseEquipmentConfig()
 	parsereactorParam()
-	parseFlowName(flowData)
+	parseFlowFromConfig(flowData, equipmentConfig.get("streams", {}))
 except Exception as e:
 	print("Error parsexlxs:", e)
 try:

@@ -44,6 +44,7 @@ export interface CalculationRun {
   inputXlsxName: string | null
   inputRepName: string | null
   equipmentSnapshot: string | null
+  streamSnapshot: string | null
   errorMessage: string | null
   logs: string | null
   createdAt: string
@@ -96,6 +97,28 @@ export function parseEquipmentSnapshot(run: CalculationRun): EquipmentInstance[]
   if (!run.equipmentSnapshot) return []
   try {
     return JSON.parse(run.equipmentSnapshot) as EquipmentInstance[]
+  } catch {
+    return []
+  }
+}
+
+export type StreamDirection = 'IN' | 'OUT'
+
+export const STREAM_DIRECTION_LABEL: Record<StreamDirection, string> = {
+  IN: '원료 (입력)',
+  OUT: '제품 (출력)',
+}
+
+export interface StreamSetting {
+  streamName: string
+  direction: StreamDirection
+  cost: number | null
+}
+
+export function parseStreamSnapshot(run: CalculationRun): string[] {
+  if (!run.streamSnapshot) return []
+  try {
+    return JSON.parse(run.streamSnapshot) as string[]
   } catch {
     return []
   }

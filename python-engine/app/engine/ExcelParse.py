@@ -34,6 +34,7 @@ def parseEquipmentConfig():
 		config = json.load(f)
 
 	equipmentConfig["equipment"] = config.get("equipment", {})
+	equipmentConfig["streams"] = config.get("streams", {})
 	coefficients = config.get("formulaCoefficients", {})
 	equipmentConfig["formulaCoefficients"] = coefficients
 

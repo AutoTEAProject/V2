@@ -119,6 +119,7 @@ def calUtility(utility):
 				usage = utility[key]["MPSG_rate[KG/HR]"]
 				annualUsage = usage * int(calcOPEXdata["plantOperationHours"]) #kg/year
 				utility[key]["MPSG UTILITY ANNUAL USAGE [kg/year]"] = int(annualUsage)
+				utility[key]["MPSG UNIT PRICE [USD/kg]"] = utilityCostData["StreamPrice(MPS)"]
 				annualCost = utilityCostData["StreamPrice(MPS)"] * utility[key]["MPSG UTILITY ANNUAL USAGE [kg/year]"]
 				utility[key]["MPSG UTILITY ANNUAL COST [USD/year]"] = int(annualCost)
 				print(key, "MPSG UTILITY ANNUAL COST [USD/year]", utility[key]["MPSG UTILITY ANNUAL COST [USD/year]"])
@@ -129,6 +130,7 @@ def calUtility(utility):
 				usage = -1 * usage
 			annualUsage = usage * calcOPEXdata["plantOperationHours"] #kg/year
 			utility[key]["COOLING UTILITY ANNUAL USAGE [kg/year]"] = int(annualUsage)
+			utility[key]["COOLING UNIT PRICE [USD/kg]"] = utilityCostData["CoolingWaterPrice"]
 			utilityCost = usage * utilityCostData["CoolingWaterPrice"] #USD/hr
 			utility[key]["COOLING UTILITY UTILITY COST [USD/hr]"] = int(utilityCost)
 			annualCost = utilityCost * calcOPEXdata["plantOperationHours"] #USD/year
@@ -141,6 +143,7 @@ def calUtility(utility):
 				duty = -1 * duty
 			annualDuty = duty * calcOPEXdata["plantOperationHours"] #kWh/year
 			utility[key]["HOT UTILITY ANNUAL DUTY [kWh/year]"] = int(annualDuty)
+			utility[key]["HOT UNIT PRICE [USD/kWh]"] = utilityCostData["NGprice"]
 			annualCost = annualDuty * utilityCostData["NGprice"]  #USD/year
 			utility[key]["HOT UTILITY ANNUAL COST [USD/year]"] = int(annualCost)
 			print(key, "HOT UTILITY ANNUAL COST [USD/year]", utility[key]["HOT UTILITY ANNUAL COST [USD/year]"])
@@ -149,6 +152,7 @@ def calUtility(utility):
 			usage = utility[key]["ELECTRICITY UTILITY[kW]"]
 			annualUsage = usage * calcOPEXdata["plantOperationHours"] #kWh/year
 			utility[key]["ELECTRICITY UTILITY ANNUAL USAGE [kWh/year]"] = int(annualUsage)
+			utility[key]["ELECTRICITY UNIT PRICE [USD/kWh]"] = utilityCostData["electricityCostPerKWH"]
 			annualCost = annualUsage * utilityCostData["electricityCostPerKWH"] #USD/year
 			utility[key]["ELECTRICITY UTILITY ANNUAL COST [USD/year]"] = int(annualCost)
 			print(key, "ELECTRICITY UTILITY ANNUAL COST [USD/year]", utility[key]["ELECTRICITY UTILITY ANNUAL COST [USD/year]"])

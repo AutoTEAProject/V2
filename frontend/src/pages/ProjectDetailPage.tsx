@@ -5,8 +5,9 @@ import { api } from '../api/client'
 import { RunTab } from './RunTab'
 import { EquipmentCostSettingsTab } from './EquipmentCostSettingsTab'
 import { UtilitySettingsTab } from './UtilitySettingsTab'
+import { StreamSettingsTab } from './StreamSettingsTab'
 
-type Tab = 'run' | 'cost' | 'utility'
+type Tab = 'run' | 'cost' | 'utility' | 'stream'
 
 export function ProjectDetailPage() {
   const { caseId } = useParams<{ caseId: string }>()
@@ -48,11 +49,19 @@ export function ProjectDetailPage() {
         >
           Utility 설정
         </button>
+        <button
+          type="button"
+          className={tab === 'stream' ? 'tab active' : 'tab'}
+          onClick={() => setTab('stream')}
+        >
+          원료/제품 설정
+        </button>
       </div>
 
       {tab === 'run' && <RunTab caseId={id} onGoToSettings={() => setTab('cost')} />}
       {tab === 'cost' && <EquipmentCostSettingsTab caseId={id} />}
       {tab === 'utility' && <UtilitySettingsTab caseId={id} />}
+      {tab === 'stream' && <StreamSettingsTab caseId={id} />}
     </div>
   )
 }

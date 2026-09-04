@@ -15,9 +15,9 @@ class CalculationError(Exception):
         self.logs = logs
 
 
-def parse_equipment(xlsx_bytes: bytes, rep_bytes: bytes, timeout: int = 300) -> tuple[list[dict], str]:
+def parse_equipment(xlsx_bytes: bytes, rep_bytes: bytes, timeout: int = 300) -> tuple[list[dict], list[str], str]:
     """
-    input.xlsx/input.rep 바이트만으로 장치 이름+타입 목록을 뽑아낸다(원가 계산은 하지 않음).
+    input.xlsx/input.rep 바이트만으로 장치 이름+타입 목록과 stream 이름 목록을 뽑아낸다(원가 계산은 하지 않음).
     호출마다 새 임시 디렉터리를 만들어 격리하고 끝나면 지운다(backend와 디스크를 공유하지 않는다).
     """
     with tempfile.TemporaryDirectory(prefix="autotea-parse-") as tmp:
@@ -41,9 +41,9 @@ def parse_equipment(xlsx_bytes: bytes, rep_bytes: bytes, timeout: int = 300) -> 
             raise CalculationError(f"장치 파싱 실패 (exit code {result.returncode})", logs=logs)
 
         with open(parse_result_file, encoding="utf-8") as f:
-            equipment = json.load(f)
+            result_json = json.load(f)
 
-        return equipment, logs
+        return result_json.get("equipment", []), result_json.get("streams", []), logs
 
 
 def execute(xlsx_bytes: bytes, rep_bytes: bytes, equipment_config: dict, timeout: int = 300) -> tuple[bytes, dict, str]:

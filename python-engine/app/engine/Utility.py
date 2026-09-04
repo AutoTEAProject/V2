@@ -5,7 +5,7 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font
-from data import HeaterParam, HeatExchangerParam, CompressorParam, reactorParam, ReactParam, atomicWeight, utilityCostData, equipmentConfig, HTX_CAPACITY_PARAM
+from data import HeaterParam, HeatExchangerParam, CompressorParam, reactorParam, ReactParam, atomicWeight, utilityCostData, equipmentConfig, HTX_CAPACITY_PARAM, CEPCI_BASE, CEPCI_CURRENT
 from openpyxl import load_workbook
 
 
@@ -93,6 +93,43 @@ def selectedFormulaNames(key, paramDict):
 		return [name for name in names if name in paramDict]
 	return list(paramDict.keys())
 
+def powerLawCost(params, capacity, capacityUnit):
+	"""
+	HEX/HTX 공통 상관식: EQUIPMENT COST = 10^(K1+K2+K3) * (Capacity/10)^0.6 * (CEPCI_CURRENT/CEPCI_BASE)
+	계산 결과뿐 아니라 계산에 쓰인 입력값과 수식 문자열도 같이 돌려줘서, 결과 엑셀에서 "왜 이 금액이
+	나왔는지"를 바로 확인할 수 있게 한다.
+	"""
+	cost = ((10 ** (params["K1"] + params["K2"] + params["K3"])) * (capacity / 10) ** 0.6) * (CEPCI_CURRENT / CEPCI_BASE)
+	entry = deepcopy(params)
+	entry["Capacity"] = capacity
+	entry["Capacity Unit"] = capacityUnit
+	entry["CEPCI(base)"] = CEPCI_BASE
+	entry["CEPCI(current)"] = CEPCI_CURRENT
+	entry["EQUIPMENT COST"] = cost
+	entry["Formula"] = (
+		f"10^(K1+K2+K3) * (Capacity/10)^0.6 * (CEPCI_current/CEPCI_base) "
+		f"= 10^({params['K1']}+{params['K2']}+{params['K3']}) * ({capacity:.4g}/10)^0.6 "
+		f"* ({CEPCI_CURRENT}/{CEPCI_BASE}) = {cost:.4g}"
+	)
+	return entry
+
+def logPolynomialCost(params, capacity, capacityUnit):
+	"""COMP 상관식: EQUIPMENT COST = 10^(K1 + K2*log10(Capacity) + K3*log10(Capacity)^2) * (CEPCI_CURRENT/CEPCI_BASE)"""
+	logCapacity = math.log(capacity, 10)
+	cost = (10 ** (params["K1"] + params["K2"] * logCapacity + params["K3"] * (logCapacity ** 2))) * (CEPCI_CURRENT / CEPCI_BASE)
+	entry = deepcopy(params)
+	entry["Capacity"] = capacity
+	entry["Capacity Unit"] = capacityUnit
+	entry["CEPCI(base)"] = CEPCI_BASE
+	entry["CEPCI(current)"] = CEPCI_CURRENT
+	entry["EQUIPMENT COST"] = cost
+	entry["Formula"] = (
+		f"10^(K1 + K2*log10(Capacity) + K3*log10(Capacity)^2) * (CEPCI_current/CEPCI_base) "
+		f"= 10^({params['K1']} + {params['K2']}*log10({capacity:.4g}) + {params['K3']}*log10({capacity:.4g})^2) "
+		f"* ({CEPCI_CURRENT}/{CEPCI_BASE}) = {cost:.4g}"
+	)
+	return entry
+
 def normalizeName(name):
 	# 이름이 .으로 구분되어 있으면 . 이후의 문자열을 반환, 아니면 원래 이름 반환
 	if "." in name:
@@ -166,14 +203,10 @@ def calEquipmentCost(inputData, cost, utility, exceptCapacity): #react도 추가
 			else:
 				capacity = equipmentUtility[utilityKey] / HTX_CAPACITY_PARAM
 				for formulaName in selectedFormulaNames(key, HeaterParam):
-					params = HeaterParam[formulaName]
-					temp[formulaName] = deepcopy(params)
-					temp[formulaName]["EQUIPMENT COST"] = ((10**(params["K1"]+params["K2"]+params["K3"]))*(capacity / 10)**(0.6)) * (798.8 / 397)
+					temp[formulaName] = powerLawCost(HeaterParam[formulaName], capacity, "kW")
 		elif (type == "HEX"):
 			for formulaName in selectedFormulaNames(key, HeatExchangerParam):
-				params = HeatExchangerParam[formulaName]
-				temp[formulaName] = deepcopy(params)
-				temp[formulaName]["EQUIPMENT COST"] = ((10**(params["K1"]+params["K2"]+params["K3"]))*(capacity / 10)**(0.6)) * (798.8 / 397)
+				temp[formulaName] = powerLawCost(HeatExchangerParam[formulaName], capacity, "sqm")
 		elif (checkType(key) == "COMP"):
 			if (inputData[key]["DriverPower"] == 0):
 				print("Driver Power이 0인 Compressor가 있습니다. : " + key)
@@ -182,13 +215,18 @@ def calEquipmentCost(inputData, cost, utility, exceptCapacity): #react도 추가
 				# 나중에 여기에 에러 처리 코드 넣기
 			capacity = inputData[key]["DriverPower"]
 			for formulaName in selectedFormulaNames(key, CompressorParam):
-				params = CompressorParam[formulaName]
-				temp[formulaName] = deepcopy(params)
-				temp[formulaName]["EQUIPMENT COST"] = (10**(params["K1"] + params["K2"] * (math.log(capacity, 10)) + (params["K3"] * ((math.log(capacity, 10))**2)))) * (798.8 / 397)
+				temp[formulaName] = logPolynomialCost(CompressorParam[formulaName], capacity, "kW")
 		elif (type == "REACT"):
 			if key in reactorParam:
-				temp["input"] = deepcopy(reactorParam[key])
-				temp["input"]["EQUIPMENT COST"] = (reactorParam[key]["Equipment Cost"] * (reactorParam[key]["Capacity_parsed KW"] / reactorParam[key]["Capacity [KW]"]) ** reactorParam[key]["Scaling Factor"]) * reactorParam[key]["Additional Param"] * (reactorParam[key]["Cepci_recent"] / reactorParam[key]["Cepci_before"])
+				p = reactorParam[key]
+				reactCost = (p["Equipment Cost"] * (p["Capacity_parsed KW"] / p["Capacity [KW]"]) ** p["Scaling Factor"]) * p["Additional Param"] * (p["Cepci_recent"] / p["Cepci_before"])
+				temp["input"] = deepcopy(p)
+				temp["input"]["EQUIPMENT COST"] = reactCost
+				temp["input"]["Formula"] = (
+					f"Base Cost * (Capacity/Capacity_ref)^ScalingFactor * AdditionalParam * (CEPCI_current/CEPCI_ref) "
+					f"= {p['Equipment Cost']:.4g} * ({p['Capacity_parsed KW']:.4g}/{p['Capacity [KW]']:.4g})^{p['Scaling Factor']} "
+					f"* {p['Additional Param']} * ({p['Cepci_recent']}/{p['Cepci_before']}) = {reactCost:.4g}"
+				)
 			else:
 				temp["input"] = deepcopy(ReactParam["Nan"])
 				temp["input"]["EQUIPMENT COST"] = 0
