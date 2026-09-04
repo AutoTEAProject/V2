@@ -5,20 +5,22 @@ from enums import Index
 def equipmentSetting(key):
 	return equipmentConfig.get("equipment", {}).get(key, {})
 
-def defaultFormulaCost(key, cost):
+def defaultFormulaCandidate(key, cost):
 	"""
-	장치 key에 대해 프로젝트에서 지정한 '기본 수식'의 계산된 원가를 돌려준다.
+	장치 key에 대해 프로젝트에서 지정한 '기본 수식'의 후보 이름과 계산된 원가를 함께 돌려준다.
+	후보 이름까지 돌려주는 이유는, 결과 엑셀의 CAPEX 시트가 이 값을 그냥 숫자로 적지 않고
+	Equipment Cost 시트에서 정확히 어느 셀을 참조해야 하는지 알아야 하기 때문이다(printout 참고).
 	기본 수식이 지정되지 않았거나 계산된 후보 목록에 없으면(설정이 비어있는 예외 상황),
 	계산된 후보 중 아무거나 방어적으로 사용한다.
 	"""
 	formulaName = equipmentSetting(key).get("defaultFormula")
 	candidates = cost.get(key, {})
 	if formulaName and formulaName in candidates:
-		return candidates[formulaName]["EQUIPMENT COST"]
+		return formulaName, candidates[formulaName]["EQUIPMENT COST"]
 	for name, values in candidates.items():
 		if name != "ATEA" and "EQUIPMENT COST" in values:
-			return values["EQUIPMENT COST"]
-	return 0
+			return name, values["EQUIPMENT COST"]
+	return None, 0
 
 def calCAPEX(inputData, cost, CAPEX):
 	#CAPEX 출력 순서 지정을 위한 전방선언
@@ -62,6 +64,10 @@ def calCAPEX(inputData, cost, CAPEX):
 	CAPEX["Total capital investment (Capex)"] = ["TCI"]
 	CAPEX["Annualized capital cost (r=5%, t=30 year)"] = ["EAC", 0]
 
+	# 장치별로 최종 채택된 원가 후보(수식 이름, "ATEA", REACT의 "input", 혹은 후보가 아예 없으면 None).
+	# 결과 엑셀의 CAPEX 시트가 "Equipment cost" 합계를 Equipment Cost 시트 셀을 참조하는 진짜 수식으로
+	# 적을 때, 장치별로 어느 셀을 참조해야 하는지 알기 위해 printout에 그대로 넘긴다.
+	equipmentCostSelection = {}
 	for key in cost:
 		if equipmentSetting(key).get("skipCost", False):
 			# print(key, "은(는) 설비비 계산에서 제외된 장비입니다.")
@@ -72,16 +78,21 @@ def calCAPEX(inputData, cost, CAPEX):
 		hasFormula = equipType in ("HTX", "HEX", "REACT") or checkType(key) == "COMP"
 		costSource = equipmentSetting(key).get("costSource", "FORMULA") if hasFormula else "ASPEN"
 
+		candidateName = None
 		entryCost = 0
 		if (costSource == "ASPEN" and "ATEA" in cost[key]):
 			# print(key, cost[key]["ATEA"]["EQUIPMENT COST"])
+			candidateName = "ATEA"
 			entryCost = cost[key]["ATEA"]["EQUIPMENT COST"]
 		elif (equipType == "REACT"):
+			candidateName = "input"
 			entryCost = cost[key]["input"]["EQUIPMENT COST"]
 		elif (hasFormula):
-			entryCost = defaultFormulaCost(key, cost)
+			candidateName, entryCost = defaultFormulaCandidate(key, cost)
 		elif ("ATEA" in cost[key]):
+			candidateName = "ATEA"
 			entryCost = cost[key]["ATEA"]["EQUIPMENT COST"]
+		equipmentCostSelection[key] = candidateName
 		CAPEX["Equipment cost"][1] += int(entryCost)
 	CAPEX["Fixed capital investment (FCI)"].append(CAPEX["Equipment cost"][1] * 100 / 40)
 	CAPEX["Start up cost (SUC)"].append(CAPEX["Fixed capital investment (FCI)"][1] * 0.1)
@@ -107,6 +118,7 @@ def calCAPEX(inputData, cost, CAPEX):
 	
 	CAPEX["Total capital investment (Capex)"].append(CAPEX["Start up cost (SUC)"][1] + CAPEX["Fixed capital investment (FCI)"][1])
 	CAPEX["Annualized capital cost (r=5%, t=30 year)"][1] = (CAPEX["Total capital investment (Capex)"][1] / ((1 - (1 / ((1.05)**30)))/0.05))
+	return equipmentCostSelection
 
 def calUtility(utility):
 	for key in utility:

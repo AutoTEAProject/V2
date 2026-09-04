@@ -55,11 +55,11 @@ except Exception as e:
 
 # try:
 calEquipmentCost(inputData, cost, utility, exceptCapacity)
-calCAPEX(inputData, cost, CAPEX)
+equipmentCostSelection = calCAPEX(inputData, cost, CAPEX)
 calUtility(utility)
 calOPEX(CAPEX, flowData, OPEX, utility)
 calProfitAnalysis(CAPEX, OPEX, profitAnalysis, flowData)
-printout(inputData, cost, utility, CAPEX, OPEX, profitAnalysis)
+printout(inputData, cost, utility, CAPEX, OPEX, profitAnalysis, equipmentCostSelection)
 
 # 장치별/수식별로 실제 계산된 장치비(EQUIPMENT COST)를 프론트의 장치비 설정 화면에서
 # 보여줄 수 있도록 별도 JSON으로도 남겨둔다. default=float는 pandas/numpy 숫자형을

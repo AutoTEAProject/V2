@@ -245,6 +245,9 @@ def write_equipment_cost_block(ws, equipmentName, formulas):
     "EQUIPMENT COST" 칸은 그냥 계산된 숫자를 적는 게 아니라, 같은 행의 K1/K2/K3/Capacity/CEPCI
     같은 셀들을 참조하는 실제 엑셀 수식(=...)으로 적어서, 엑셀에서 그 셀을 클릭하면 어떻게
     계산됐는지 바로 보이고 값을 바꾸면 다시 계산되게 한다.
+    "FormulaKind"는 어떤 모양의 수식을 써야 하는지 판단하는 내부 표시일 뿐이라 화면에는 적지 않는다.
+    돌려주는 값은 {후보 이름: EQUIPMENT COST 셀 좌표}로, CAPEX 시트가 "이 장치는 어느 후보를
+    채택했는지"에 맞는 정확한 셀을 참조해서 합계를 낼 수 있게 해준다(printout/write_capex_sheet 참고).
     """
     ws.append([equipmentName])
     ws.cell(row=ws.max_row, column=1).font = Font(bold=True, color="004085")
@@ -252,10 +255,11 @@ def write_equipment_cost_block(ws, equipmentName, formulas):
     fieldOrder = []
     for fields in formulas.values():
         for field in fields:
-            if field not in fieldOrder:
+            if field != "FormulaKind" and field not in fieldOrder:
                 fieldOrder.append(field)
     ws.append(["formula"] + fieldOrder)
 
+    costCellRefs = {}
     for formulaName, fields in formulas.items():
         kind = fields.get("FormulaKind")
         rowValues = [formulaName] + [fields.get(field) for field in fieldOrder]
@@ -289,14 +293,154 @@ def write_equipment_cost_block(ws, equipmentName, formulas):
             ws.cell(row=row, column=colIndex["EQUIPMENT COST"]).value = formula
         # kind가 없으면(ATEA, 혹은 REACT 파라미터가 없어 0으로 대체된 경우) Aspen이 준 값이거나
         # 계산할 수식이 아예 없는 경우라서 EQUIPMENT COST는 그냥 숫자 그대로 둔다.
+        if "EQUIPMENT COST" in colIndex:
+            costCellRefs[formulaName] = coord("EQUIPMENT COST")
     ws.append([])
+    return costCellRefs
+
+def write_capex_sheet(ws, CAPEX, costCellRefs, equipmentCostSelection):
+    """
+    CAPEX 딕셔너리를 그대로 행으로 적되(A=항목명, B=비율/범위 텍스트, C=값), C열은 파이썬이
+    미리 계산해둔 숫자를 박아넣는 대신 실제 엑셀 수식으로 적어서 FCI/장치비 등이 바뀌면
+    같이 재계산되게 한다. "Equipment cost" 행만 Equipment Cost 시트의 실제 채택된 후보 셀들을
+    참조하고, 나머지는 전부 이 시트 안의 다른 행(주로 FCI)을 참조한다. 계산 로직 자체는
+    Calc.calCAPEX와 완전히 동일하고, 여기서는 그 계산을 "셀 참조"로 옮겨 적을 뿐이다.
+    """
+    rowMap = {}
+    for label, values in CAPEX.items():
+        rangeText = values[0] if len(values) > 0 else None
+        value = values[1] if len(values) > 1 else None
+        ws.append([label, rangeText, value])
+        rowMap[label] = ws.max_row
+
+    def ref(label):
+        return f"C{rowMap[label]}" if label in rowMap else None
+
+    def set_formula(label, formula):
+        if label in rowMap and formula:
+            ws.cell(row=rowMap[label], column=3).value = "=" + formula
+
+    if "Equipment cost" in rowMap:
+        terms = []
+        for key, candidateName in equipmentCostSelection.items():
+            if candidateName is None:
+                continue
+            cellRef = costCellRefs.get(key, {}).get(candidateName)
+            if cellRef:
+                terms.append(f"INT('Equipment Cost'!{cellRef})")
+        set_formula("Equipment cost", "+".join(terms) if terms else "0")
+
+    fci = ref("Fixed capital investment (FCI)")
+    if "Equipment cost" in rowMap:
+        set_formula("Fixed capital investment (FCI)", f"{ref('Equipment cost')}*100/40")
+    if fci:
+        for label, pct in [
+            ("Start up cost (SUC)", 0.1),
+            ("Installation of equipment ", 0.08),
+            ("Instrument and control", 0.05),
+            ("Piping", 0.03),
+            ("Electrical", 0.05),
+            ("Building and building services", 0.07),
+            ("Yard improvements", 0.02),
+            ("Services facilities", 0.08),
+            ("Land", 0.02),
+            ("Engineering", 0.05),
+            ("Construction expenses", 0.05),
+            ("Contractor's fee", 0.05),
+            ("Contingency", 0.05),
+        ]:
+            set_formula(label, f"{fci}*{pct}")
+
+    direct_cost_parts = [
+        "Equipment cost", "Installation of equipment ", "Instrument and control", "Piping", "Electrical",
+        "Building and building services", "Yard improvements", "Services facilities", "Land",
+    ]
+    set_formula("Total direct cost", "+".join(ref(p) for p in direct_cost_parts if p in rowMap))
+
+    indirect_cost_parts = ["Engineering", "Construction expenses", "Contractor's fee", "Contingency"]
+    set_formula("Total indirect cost", "+".join(ref(p) for p in indirect_cost_parts if p in rowMap))
+
+    if "Start up cost (SUC)" in rowMap and fci:
+        set_formula("Total capital investment (Capex)", f"{ref('Start up cost (SUC)')}+{fci}")
+
+    if "Total capital investment (Capex)" in rowMap:
+        set_formula(
+            "Annualized capital cost (r=5%, t=30 year)",
+            f"{ref('Total capital investment (Capex)')}/((1-(1/(1.05^30)))/0.05)",
+        )
+    return rowMap
+
+def write_opex_sheet(ws, OPEX, capexSheetName, capexRowMap):
+    """
+    CAPEX 시트와 같은 방식: OPEX 딕셔너리를 행으로 적고, C열은 실제 엑셀 수식으로 채운다.
+    "Fixed charge(FC)"/"Local taxes, Insurance"/"Matinenenance (M)"는 CAPEX 시트의 FCI 셀을
+    참조하는 시트 간 수식이다. "Raw materials"/"Utility"는 원료 스트림별 유량·utility별
+    장치 사용량이라는, 이 워크북에 셀로 존재하지 않는 원천 데이터의 합이라서(장치비처럼 셀
+    참조로 연결할 대상이 없어서) 계산된 숫자 그대로 둔다. 계산 로직은 Calc.calOPEX와 동일하다.
+    """
+    rowMap = {}
+    for label, values in OPEX.items():
+        rangeText = values[0] if len(values) > 0 else None
+        value = values[1] if len(values) > 1 else None
+        ws.append([label, rangeText, value])
+        rowMap[label] = ws.max_row
+
+    def ref(label):
+        return f"C{rowMap[label]}" if label in rowMap else None
+
+    def capex_ref(label):
+        return f"'{capexSheetName}'!C{capexRowMap[label]}" if label in capexRowMap else None
+
+    def set_formula(label, formula):
+        if label in rowMap and formula:
+            ws.cell(row=rowMap[label], column=3).value = "=" + formula
+
+    fci = capex_ref("Fixed capital investment (FCI)")
+    if fci:
+        set_formula("Fixed charge(FC)", f"{fci}*0.01")
+        set_formula("Local taxes, Insurance", f"{fci}*0.01")
+        set_formula("Matinenenance (M)", f"{fci}*0.01")
+
+    if "Matinenenance (M)" in rowMap:
+        set_formula("Operating supplies", f"{ref('Matinenenance (M)')}*0.1")
+
+    utilityRef = ref("Utility")
+    rawMaterialsRef = ref("Raw materials")
+    if fci and utilityRef and rawMaterialsRef:
+        set_formula("OPEX", f"1.35135135135*({fci}*0.026+({utilityRef}+{rawMaterialsRef}))")
+
+    if "OPEX" in rowMap:
+        set_formula("Operating labor (OL)", f"{ref('OPEX')}*0.1")
+        set_formula("Distribution and marketing", f"{ref('OPEX')}*0.02")
+        set_formula("R&D cost", f"{ref('OPEX')}*0.02")
+
+    if "Operating labor (OL)" in rowMap:
+        set_formula("Supervision and support labor (S)", f"{ref('Operating labor (OL)')}*0.3")
+        set_formula("Laboratory charges", f"{ref('Operating labor (OL)')}*0.1")
+        set_formula("Admistrative cost", f"{ref('Operating labor (OL)')}*0.15")
+
+    ovhd_parts = ["Matinenenance (M)", "Operating labor (OL)", "Supervision and support labor (S)"]
+    if all(p in rowMap for p in ovhd_parts):
+        set_formula("Plant overhead cost(OVHD)", f"0.5*({'+'.join(ref(p) for p in ovhd_parts)})")
+
+    dpc_parts = [
+        "Raw materials", "Utility", "Matinenenance (M)", "Operating labor (OL)",
+        "Supervision and support labor (S)", "Operating supplies", "Laboratory charges",
+    ]
+    if all(p in rowMap for p in dpc_parts):
+        set_formula("Direct production cost (DPC)", "+".join(ref(p) for p in dpc_parts))
+
+    general_expense_parts = ["Admistrative cost", "Distribution and marketing", "R&D cost"]
+    if all(p in rowMap for p in general_expense_parts):
+        set_formula("General expenses", "+".join(ref(p) for p in general_expense_parts))
+    return rowMap
 
 def autofit(ws):
     for col in ws.columns:
         max_len = max((len(str(cell.value)) if cell.value else 0) for cell in col)
         ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 60)
 
-def printout(inputData, cost, utility, CAPEX, OPEX, profitAnalysis):
+def printout(inputData, cost, utility, CAPEX, OPEX, profitAnalysis, equipmentCostSelection):
     
     columns = ["Name","EquipmentCost","InstalledCost","EquipmentWeight",
            "InstalledWeight","UtilityCost","HeatTransferArea","DriverPower"]
@@ -318,21 +462,22 @@ def printout(inputData, cost, utility, CAPEX, OPEX, profitAnalysis):
     
     # 시트 3: CAPCOST (블럭 스타일). EQUIPMENT COST 칸은 실제 엑셀 수식으로 적는다(write_equipment_cost_block 참고).
     ws3 = wb.create_sheet("Equipment Cost")
+    costCellRefs = {}
     for k, v in cost.items():
-        write_equipment_cost_block(ws3, k, v)
+        costCellRefs[k] = write_equipment_cost_block(ws3, k, v)
     autofit(ws3)
 
+    # 시트 4: CAPEX. "Equipment cost" 합계와 FCI에서 파생되는 나머지 항목 전부 실제 엑셀 수식으로 적는다
+    # (write_capex_sheet 참고) — CAPEX 값을 바꾸면 여기서부터 다시 계산된다.
     ws4 = wb.create_sheet("CAPEX")
-
-    for key, values in CAPEX.items():
-        ws4.append([key] + values)
-
+    capexRowMap = write_capex_sheet(ws4, CAPEX, costCellRefs, equipmentCostSelection)
     autofit(ws4)
-    
-    # 시트 5: OPEX
+
+    # 시트 5: OPEX. CAPEX 시트의 FCI 셀을 참조하고, OPEX 내부에서 파생되는 항목도 전부 수식으로 적는다.
+    # Raw materials/Utility는 원천 데이터(원료 스트림별 유량, 장치별 utility 사용량)가 이 워크북에
+    # 셀로 없어서 계산된 숫자 그대로 둔다(write_opex_sheet 참고).
     ws5 = wb.create_sheet("OPEX")
-    for key, values in OPEX.items():
-        ws5.append([key] + values)
+    write_opex_sheet(ws5, OPEX, ws4.title, capexRowMap)
     autofit(ws5)
     
     ws6 = wb.create_sheet("Profitability Analysis")
