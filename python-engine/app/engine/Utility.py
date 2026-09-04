@@ -275,13 +275,58 @@ def write_section_header(ws, title):
     cell.fill = PatternFill("solid", fgColor="004085")
     ws.append([])
 
-def write_utility_block(ws, equipmentName, metrics):
-    """장치 하나(equipmentName)의 utility 사용량/비용 지표(metrics: 지표 이름 -> 값)를 한 줄짜리 표로 적는다."""
-    ws.append([equipmentName])
-    ws.cell(row=ws.max_row, column=1).font = Font(bold=True, color="004085")
-    if metrics:
-        ws.append(list(metrics.keys()))
-        ws.append(list(metrics.values()))
+# utility 지표 이름(예: "HOT UTILITY[kW]", "HOT UTILITY ANNUAL COST [USD/year]")을 어떤
+# utility 종류로 묶을지 판단하는 접두어 목록. "MPSG"가 "MPS"의 부분집합이라 MPSG를 먼저 검사해야 한다.
+UTILITY_CATEGORY_ORDER = ["COOLING", "HOT", "ELECTRICITY", "MPSG", "MPS"]
+UTILITY_CATEGORY_LABEL = {
+    "COOLING": "COOLING (냉각수)",
+    "HOT": "HOT (가열)",
+    "ELECTRICITY": "ELECTRICITY (전력)",
+    "MPSG": "MPSG (스팀)",
+    "MPS": "MPS (스팀)",
+}
+
+def categorize_utility_key(metricKey):
+    for category in UTILITY_CATEGORY_ORDER:
+        if metricKey.startswith(category):
+            return category
+    return "ETC"
+
+def write_utility_type_group(ws, equipmentKeys, utility):
+    """
+    장치 종류 하나(예: HTX)에 속한 장치들의 utility 지표를, COOLING/HOT/ELECTRICITY/MPSG 같은
+    utility 종류별로 다시 묶어서 표 하나씩으로 적는다. 같은 종류의 지표 이름(헤더)을 장치마다
+    반복해서 적지 않고 한 번만 적은 뒤 장치별로 한 행씩 쌓는 표 형태라 훨씬 알아보기 쉽다.
+    """
+    byCategory = {}
+    for key in equipmentKeys:
+        perCategory = {}
+        for metricKey, value in utility.get(key, {}).items():
+            perCategory.setdefault(categorize_utility_key(metricKey), {})[metricKey] = value
+        for category, metrics in perCategory.items():
+            byCategory.setdefault(category, {})[key] = metrics
+
+    order = UTILITY_CATEGORY_ORDER + [c for c in byCategory if c not in UTILITY_CATEGORY_ORDER]
+    for category in order:
+        equipmentMetrics = byCategory.get(category)
+        if not equipmentMetrics:
+            continue
+        write_utility_category_table(ws, category, equipmentMetrics)
+
+def write_utility_category_table(ws, category, equipmentMetrics):
+    """equipmentMetrics: 장치 이름 -> {지표 이름: 값} (전부 같은 utility 종류의 지표만 담겨 있음)."""
+    ws.append([UTILITY_CATEGORY_LABEL.get(category, category)])
+    ws.cell(row=ws.max_row, column=1).font = Font(bold=True, italic=True, color="004085")
+
+    fieldOrder = []
+    for metrics in equipmentMetrics.values():
+        for field in metrics:
+            if field not in fieldOrder:
+                fieldOrder.append(field)
+    ws.append(["장치"] + fieldOrder)
+
+    for equipmentName, metrics in equipmentMetrics.items():
+        ws.append([equipmentName] + [metrics.get(field) for field in fieldOrder])
     ws.append([])
 
 def write_equipment_cost_block(ws, equipmentName, formulas):
@@ -500,12 +545,12 @@ def printout(inputData, cost, utility, CAPEX, OPEX, profitAnalysis, equipmentCos
         ws.append([name] + [row[col] for col in columns[1:]])  # 첫 열은 name, 나머지는 columns 순서대로
     autofit(ws)
 
-    # 시트 2: UTILITY. 장치 종류(HTX/HEX/COMP/REACT/...)별로 묶어서 보여준다.
+    # 시트 2: UTILITY. 장치 종류(HTX/HEX/COMP/REACT/...)별로 묶고, 그 안에서 다시
+    # COOLING/HOT/ELECTRICITY/MPSG 같은 utility 종류별로 묶어서 표 하나씩 보여준다.
     ws2 = wb.create_sheet("UTILITY")
     for equipType, keys in group_keys_by_type(inputData, utility.keys()):
         write_section_header(ws2, EQUIPMENT_TYPE_LABEL.get(equipType, equipType))
-        for key in keys:
-            write_utility_block(ws2, key, utility[key])
+        write_utility_type_group(ws2, keys, utility)
     autofit(ws2)
 
     # 시트 3: CAPCOST (블럭 스타일). EQUIPMENT COST 칸은 실제 엑셀 수식으로 적는다(write_equipment_cost_block 참고).
